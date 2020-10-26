@@ -12,15 +12,16 @@
 ##################################################
 
 # necessary imports
-import numpy as np									# np arrays for calcalutation
-from PIL import Image								# loading images
+import numpy as np							# np arrays for calcalutation
+from PIL import Image							# loading images
 import matplotlib.pyplot as plt						# plotting
 from numpy.linalg import svd						# numpys svd implementation
-from skimage import data 							# image handling
+from skimage import data 						# image handling
 from skimage.color import rgb2gray					# -||-						
-import os											# directory handling
-import concurrent.futures                           # multiprocessing 
-import multiprocessing                              # multiprocessing classic
+import cv2                                                              # image processing using openCV
+import os								# directory handling
+import concurrent.futures                                               # multiprocessing 
+import multiprocessing                                                  # multiprocessing classic
 from datetime import datetime						# benchmarking
 
 
@@ -33,7 +34,10 @@ startTime = datetime.now()
 dir_path = os.getcwd()+"/"
 
 # number of singular values used for image reconstruction
-d = 1500
+d = 200
+
+# needed to reconstruct image in right pixel size -> get your display dpi here: https://www.infobyip.com/detectmonitordpi.php
+my_dpi = 96
 
 ################### Function Definition
 
@@ -64,7 +68,7 @@ def compress_image_svd(image):
     return reconstimg
 
 # plot and save reconstrcuted image
-def plot_svd_image(image_name):
+def plot_svd_image_np(image_name):
 
     print(f"job for {image_name} started")
     image = np.array(Image.open(dir_path + image_name))
@@ -72,13 +76,26 @@ def plot_svd_image(image_name):
     recon_image = np.zeros(image.shape)
     for j in range(3):
         recon_image[:,:,j] = reconstructed_layers[j]
-    plt.figure(figsize =((recon_image,shape[1]/1000), (recon_image.shape[0]/1000)), dpi = 100)
+    plt.figure(figsize =((recon_image.shape[1]/1000), (recon_image.shape[0]/1000)), dpi = my_dpi)
     plt.margins(0,0)
     plt.axis('off')
     plt.imshow(recon_image / 255.0)
-    plt.savefig(str(d) + '_svs_' + image_name + '.svd', bbox_inches='tight', pad_inches = 0, dpi = 1000)
+    plt.savefig(str(d) + '_svd_' + image_name, bbox_inches='tight', pad_inches = 0, dpi = my_dpi * 10)
     return 'svd computed for: ', image_name
 
+def plot_svd_image_cv2(image_name):
+
+    print(f"job for {image_name} started")
+    image = np.array(Image.open(dir_path + image_name))
+    reconstructed_layers = [compress_image_svd(image[:,:,i]) for i in range(3)]
+    recon_image = np.zeros(image.shape)
+    for j in range(3):
+        recon_image[:,:,j] = reconstructed_layers[j]
+    # cv2 uses BGR, we have to adapt it to RGB
+    ima2 = recon_image[..., ::-1]
+    cv2.imwrite("svd_"+ str(d) "_" + str(image_name), ima2)
+    figurename = "Reconstructed {} with {} singular values".format(image_name, d)
+    return figurename
 ################### Main Script 
 
 # get filenames
@@ -86,7 +103,7 @@ name_list = get_image_names(dir_path)
 
 # use concurrent futures for for multiprocessing -> adapt workers ( 4 were the seetspot on my machine)
 with concurrent.futures.ProcessPoolExecutor(max_workers= 4) as executor:
-    results = [executor.submit(plot_svd_image, filename) for filename in name_list]
+    results = [executor.submit(plot_svd_image_cv2, filename) for filename in name_list]
 
     for f in concurrent.futures.as_completed(results):
         print(f.result())

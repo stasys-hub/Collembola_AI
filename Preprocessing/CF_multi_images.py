@@ -1,7 +1,7 @@
 
 ##################################################
 ## Content: This Script preprocesses images 
-#  using SVD and kmeans colour space reduction
+#  using kmeans colour space reduction
 
 ## Author: Stanislav Sys
 
@@ -20,6 +20,7 @@ import numpy as np                                  # arrays for calcualtion
 import matplotlib.pyplot as plt                     # create figures
 from numpy.linalg import svd                        # perform SVD
 from skimage import data                            # imageprocessing
+import cv2											# image processing using openCV
 from skimage.color import rgb2gray                  # -""-
 import matplotlib.pyplot as plt                     # plotting
 from PIL import Image                               # load images
@@ -40,7 +41,7 @@ startTime = datetime.now()
 dir_path = os.getcwd()+"/"
 
 # number of colours the image will be downsampled to -> increasing hits on performance
-k = 96
+k = 128
 
 # number of singular Values to be used for image reconstruction after decomposition
 #s = 50
@@ -62,8 +63,9 @@ def get_image_names(directory_path):
              
     print("read in " + str(counter) + " files from : " + directory_path)
     return names
-# downsample colours of images using kmeans algorithm and save them
-def calculate_kmeans_figure(image_name):
+    
+# downsample colours of images using kmeans algorithm and save them with matplotlib
+def calculate_kmeans_figure_mpl(image_name):
     #first we have to load and reshape the image
     print(f'started job for {image_name}')
     image_np = np.array(Image.open(dir_path + image_name))
@@ -82,7 +84,23 @@ def calculate_kmeans_figure(image_name):
     figure_name = "processed " + str(k) + "_kmeans_" + image_name 
     return figure_name
 
+# downsample colours of images using kmeans algorithm and save them with cv2 -> better
+def calculate_kmeans_figure_cv2(image_name):
+    #first we have to load and reshape the image
+    print(f'started job for {image_name}')
+    image_np = np.array(Image.open(dir_path + image_name))
+    image_2d = (image_np / 255)
+    image_2d = image_2d.reshape(image_np.shape[0]*image_np.shape[1],image_np.shape[2])
 
+    #now we use the kmeans algorithm to calculate new colours                                             
+    kmeans.fit(image_2d)
+    new_colors = kmeans.cluster_centers_[kmeans.predict(image_2d)]
+    img_recolored = new_colors.reshape(image_np.shape)
+    # cv2 only accepts integers and Color values in BGR -> convert	
+    ima2 = (img_recolored[..., ::-1] * 255)
+    cv2.imwrite("kmeans_"+ str(k) + "_" +  str(image_name),ima2)
+    figurename = "Downsampled {} to {} colours".format(image_name, k)
+    return figurename
 
 ################### main script
 
@@ -91,7 +109,7 @@ name_list = get_image_names(dir_path)
 
 # use concurrent futures for for multiprocessing -> adapt workers ( 4 were the seetspot on my machine)
 with concurrent.futures.ProcessPoolExecutor(max_workers= 4) as executor:
-    results = [executor.submit(calculate_kmeans_figure, filename) for filename in name_list]
+    results = [executor.submit(calculate_kmeans_figure_cv2, filename) for filename in name_list]
 
     for f in concurrent.futures.as_completed(results):
         print(f.result())
