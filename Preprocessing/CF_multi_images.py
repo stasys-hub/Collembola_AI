@@ -98,7 +98,7 @@ def calculate_kmeans_figure_cv2(image_name):
     img_recolored = new_colors.reshape(image_np.shape)
     # cv2 only accepts integers and Color values in BGR -> convert	
     ima2 = (img_recolored[..., ::-1] * 255)
-    cv2.imwrite("kmeans_"+ str(k) + "_" +  str(image_name),ima2)
+    cv2.imwrite("kmeans/kmeans_"+ str(k) + "_" +  str(image_name),ima2)
     figurename = "Downsampled {} to {} colours".format(image_name, k)
     return figurename
 

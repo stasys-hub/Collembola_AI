@@ -34,7 +34,7 @@ startTime = datetime.now()
 dir_path = os.getcwd()+"/"
 
 # number of singular values used for image reconstruction
-d = 200
+d = 300
 
 # needed to reconstruct image in right pixel size -> get your display dpi here: https://www.infobyip.com/detectmonitordpi.php
 my_dpi = 96
@@ -93,7 +93,7 @@ def plot_svd_image_cv2(image_name):
         recon_image[:,:,j] = reconstructed_layers[j]
     # cv2 uses BGR, we have to adapt it to RGB
     ima2 = recon_image[..., ::-1]
-    cv2.imwrite("svd_"+ str(d) "_" + str(image_name), ima2)
+    cv2.imwrite("svd/svd_"+ str(d) + "_" + str(image_name), ima2)
     figurename = "Reconstructed {} with {} singular values".format(image_name, d)
     return figurename
 ################### Main Script 
