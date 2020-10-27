@@ -15,6 +15,12 @@
 # input_filename
 # output_filename
 
+# If you are on Linux you can also use sed, which is made for this stuff:
+# example:
+# replace /home/noobgod/Desktop/collembola_ai/train/ with noob/ in 0.xml 
+# sed -e "s/\/home\/noobgod\/Desktop\/collembola_ai\/train\//noob\//" 0.xml > new_noob.xml
+
+
 ##################################################
 
 #imports
