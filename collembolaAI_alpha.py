@@ -16,6 +16,7 @@ import numpy as np
 import json
 import random
 import cv2
+import time
 from detectron2 import model_zoo
 from detectron2.data import DatasetCatalog, MetadataCatalog, build_detection_test_loader
 from detectron2.utils.visualizer import Visualizer, ColorMode
@@ -187,7 +188,7 @@ class collembola_ai:
 
         try:
             for i in os.listdir(os.path.join(self.working_directory,"JPG")):
-                if ".jpg" in i:
+                if i.endswith("jpg"):
                     file_path = os.path.join(self.working_directory, "JPG", i)
                     print(f"Processing: \t{file_path}")
                     im = cv2.imread(file_path)
@@ -203,16 +204,73 @@ class collembola_ai:
 
         print("\n---------------Finished Evaluation---------------")
 
+    def perfom_inference_on_folder(self, path_to_images,path_to_outputdir, imgtype):
+        try:
+            # reload the model
+            cfg = get_cfg()
+            cfg.merge_from_file(model_zoo.get_config_file("COCO-Detection/faster_rcnn_R_50_FPN_3x.yaml"))
+            cfg.DATASETS.TRAIN = ("train",)
+            cfg.DATALOADER.NUM_WORKERS = self.num_workers
+            cfg.OUTPUT_DIR =  self.output_directory
+            cfg.SOLVER.IMS_PER_BATCH = self.batch_size
+            cfg.SOLVER.BASE_LR = self.learning_rate
+            cfg.SOLVER.MAX_ITER = self.num_iter
+            cfg.MODEL.ROI_HEADS.NUM_CLASSES = self.num_classes
+            cfg.nms = True
+
+            #config for test mode
+            cfg.MODEL.WEIGHTS = os.path.join(self.output_directory, "model_final.pth")
+            cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = self.threshold
+            cfg.DATASETS.TEST = ("test", )
+            predictor = DefaultPredictor(cfg)
+
+            #prepare test dataset for metadata
+            dataset_dicts_test = DatasetCatalog.get("test")
+            dataset_metadata_test = MetadataCatalog.get("test")
+        except:
+            print("Something went wrong while loading the model configuration. Please Check your path\'")
+
+
+        n_files = len(([f for f in os.listdir(path_to_images) if f.endswith(imgtype)]))
+        counter = 1
+        print(f"Starting inference ...\nNumber of Files:\t{n_files}\nImage extension:\t{imgtype}")
+
+        try:
+            os.makedirs(path_to_outputdir, exist_ok=True)
+            for i in os.listdir(path_to_images):
+                if i.endswith(imgtype):
+                    file_path = os.path.join(path_to_images, i)
+                    print(f"processing [{counter}/{n_files}]")
+                    im = cv2.imread(file_path)
+                    outputs = predictor(im)
+                    v = Visualizer(im[:, :, ::-1], metadata=dataset_metadata_test, scale=1.)
+                    instances = outputs["instances"].to("cpu")
+                    v = v.draw_instance_predictions(instances)
+                    result = v.get_image()[:, :, ::-1]
+                    output_name = f"{path_to_outputdir}/annotated_{i}"
+                    write_res = cv2.imwrite(output_name, result)
+                    counter += 1
+        except:
+            print("Something went wrong while performing inference on your data. Please check your path directory structure\nUse \"print_model_values\" for debugging")
+
+
 if __name__ == "__main__":
 
     # stuff do declare 
     my_work_dir = "/home/vim_diesel/Collembola_AI/Training_C_AI_DATA/svd/"
     my_output_dir = "/home/vim_diesel/Collembola_AI/Training_C_AI_DATA/svd/8k_batch10_svd/"
 
+
     # run a test
     test = collembola_ai(my_work_dir, my_output_dir, work_num=5)
     test.print_model_values()
     test.load_train_test()
     #test.start_training()
-    test.start_evaluation_on_test()
+    #test.start_evaluation_on_test()
+    # Inference test
+
+    imgpath = "/home/vim_diesel/Collembola_AI/JPG"
+    my_output_inference = "/home/vim_diesel/Collembola_AI/testoutput"
+    my_type = "jpg"
+    test.perfom_inference_on_folder(imgpath, my_output_inference, my_type)
 
