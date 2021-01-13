@@ -59,7 +59,8 @@ from detectron2.structures import BoxMode
 class collembola_ai:
 
 
-    def __init__(self, workingdir, outputdir, n_iterations=8000, work_num=2, my_batch_size=5, learning_rate=0.00025, number_classes=10, treshhold=0.55):
+    def __init__(self, workingdir: str, outputdir: str, n_iterations: int = 8000, work_num: int = 2, my_batch_size: int = 5, learning_rate: float = 0.00025, number_classes:int = 10, treshhold: float = 0.55):
+        """Function to initialize the CollembolaAI main class. These Parameters will be used to configure Detectron2"""
 
         # set model parameters
         self.working_directory = workingdir
@@ -76,6 +77,8 @@ class collembola_ai:
 
 
     def print_model_values(self):
+        """This function will print all model parameters which can be set by the user. It is useful if you have path problems.
+        Hint: On Windows you will probably have to adjust your path because of backslashes"""
 
         print("# --------------- Model Parameters ---------------- #\n")
         print(f'Variable           \tValue\n')
@@ -91,7 +94,8 @@ class collembola_ai:
 
 
     def load_train_test(self):
-
+        """This function loads the train.json file and registers your training data using the \"register_coco_instances\" function of Detectron2
+        IMPORTANT: Currently it is necessary to use this function before performing inference with a trained model """
 
         try:
             # read train.json file
@@ -110,6 +114,8 @@ class collembola_ai:
 
 
     def start_training(self):
+        """This function will configure Detectron with your input Parameters and start the Training.
+        HINT: If you want to check your Parameters before training use \"print_model_values\""""
 
         # load a model from the modelzoo and initialize model weights and set our model params
         cfg = get_cfg()
@@ -134,6 +140,7 @@ class collembola_ai:
         print("\n---------------Finished Training---------------")
 
     def start_evaluation_on_test(self):
+        """This function will start the testing the model on test_set1 and test_set2"""
 
         # reload the model
         cfg = get_cfg()
@@ -204,7 +211,9 @@ class collembola_ai:
 
         print("\n---------------Finished Evaluation---------------")
 
-    def perfom_inference_on_folder(self, path_to_images,path_to_outputdir, imgtype):
+    def perfom_inference_on_folder(self, path_to_images,path_to_outputdir: str, imgtype: str):
+        """This function can be used to test a trained model with a set of images or to perform inference on data you want to classify.
+        IMPORTANT: You still have to load a model using \"load_train_test\""""
         try:
             # reload the model
             cfg = get_cfg()
@@ -272,5 +281,4 @@ if __name__ == "__main__":
     imgpath = "/home/vim_diesel/Collembola_AI/JPG"
     my_output_inference = "/home/vim_diesel/Collembola_AI/testoutput"
     my_type = "jpg"
-    test.perfom_inference_on_folder(imgpath, my_output_inference, my_type)
-
+    #test.perfom_inference_on_folder(imgpath, my_output_inference, my_type)
