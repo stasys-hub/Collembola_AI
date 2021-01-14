@@ -17,6 +17,7 @@ import json
 import random
 import cv2
 import time
+import warnings
 from detectron2 import model_zoo
 from detectron2.data import DatasetCatalog, MetadataCatalog, build_detection_test_loader
 from detectron2.utils.visualizer import Visualizer, ColorMode
@@ -36,7 +37,7 @@ from detectron2.structures import BoxMode
 #     |   |-[...]
 #     |   |-train.json
 #     |
-#     |-test
+#     |-test_set1
 #     |   |-img1.jpg
 #     |   |-img2.jpg
 #     |   |-[...]
@@ -193,21 +194,21 @@ class collembola_ai:
             print("Something went wrong while evaluating the \"test\" set. Please check your path directory structure\nUse \"print_model_values\" for debugging")
 
 
-        try:
-            for i in os.listdir(os.path.join(self.working_directory,"JPG")):
-                if i.endswith("jpg"):
-                    file_path = os.path.join(self.working_directory, "JPG", i)
-                    print(f"Processing: \t{file_path}")
-                    im = cv2.imread(file_path)
-                    outputs = predictor(im)
-                    v = Visualizer(im[:, :, ::-1], metadata=dataset_metadata_test, scale=1.)
-                    instances = outputs["instances"].to("cpu")
-                    v = v.draw_instance_predictions(instances)
-                    result = v.get_image()[:, :, ::-1]
-                    output_name = output_testset2 + "/annotated_" + str(i) + ".jpg"
-                    write_res = cv2.imwrite(output_name, result)
-        except:
-            print("Something went wrong while performing inference on your data. Please check your path directory structure\nUse \"print_model_values\" for debugging")
+        # try:
+        #     for i in os.listdir(os.path.join(self.working_directory,"JPG")):
+        #         if i.endswith("jpg"):
+        #             file_path = os.path.join(self.working_directory, "JPG", i)
+        #             print(f"Processing: \t{file_path}")
+        #             im = cv2.imread(file_path)
+        #             outputs = predictor(im)
+        #             v = Visualizer(im[:, :, ::-1], metadata=dataset_metadata_test, scale=1.)
+        #             instances = outputs["instances"].to("cpu")
+        #             v = v.draw_instance_predictions(instances)
+        #             result = v.get_image()[:, :, ::-1]
+        #             output_name = output_testset2 + "/annotated_" + str(i) + ".jpg"
+        #             write_res = cv2.imwrite(output_name, result)
+        # except:
+        #     print("Something went wrong while performing inference on your data. Please check your path directory structure\nUse \"print_model_values\" for debugging")
 
         print("\n---------------Finished Evaluation---------------")
 
@@ -218,12 +219,6 @@ class collembola_ai:
             # reload the model
             cfg = get_cfg()
             cfg.merge_from_file(model_zoo.get_config_file("COCO-Detection/faster_rcnn_R_50_FPN_3x.yaml"))
-            cfg.DATASETS.TRAIN = ("train",)
-            cfg.DATALOADER.NUM_WORKERS = self.num_workers
-            cfg.OUTPUT_DIR =  self.output_directory
-            cfg.SOLVER.IMS_PER_BATCH = self.batch_size
-            cfg.SOLVER.BASE_LR = self.learning_rate
-            cfg.SOLVER.MAX_ITER = self.num_iter
             cfg.MODEL.ROI_HEADS.NUM_CLASSES = self.num_classes
             cfg.nms = True
 
@@ -242,26 +237,30 @@ class collembola_ai:
 
         n_files = len(([f for f in os.listdir(path_to_images) if f.endswith(imgtype)]))
         counter = 1
+
         print(f"Starting inference ...\nNumber of Files:\t{n_files}\nImage extension:\t{imgtype}")
+        print("\n# ------------------------------------------------- #\n")
 
         try:
-            os.makedirs(path_to_outputdir, exist_ok=True)
-            for i in os.listdir(path_to_images):
-                if i.endswith(imgtype):
-                    file_path = os.path.join(path_to_images, i)
-                    print(f"processing [{counter}/{n_files}]")
-                    im = cv2.imread(file_path)
-                    outputs = predictor(im)
-                    v = Visualizer(im[:, :, ::-1], metadata=dataset_metadata_test, scale=1.)
-                    instances = outputs["instances"].to("cpu")
-                    v = v.draw_instance_predictions(instances)
-                    result = v.get_image()[:, :, ::-1]
-                    output_name = f"{path_to_outputdir}/annotated_{i}"
-                    write_res = cv2.imwrite(output_name, result)
-                    counter += 1
+            # I added this beacause Detectron2 uses an deprecated overload -> throws warning
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore')
+                os.makedirs(path_to_outputdir, exist_ok=True)
+                for i in os.listdir(path_to_images):
+                    if i.endswith(imgtype):
+                        file_path = os.path.join(path_to_images, i)
+                        print(f"processing [{counter}/{n_files}]", end='\r')
+                        im = cv2.imread(file_path)
+                        outputs = predictor(im)
+                        v = Visualizer(im[:, :, ::-1], metadata=dataset_metadata_test, scale=1.)
+                        instances = outputs["instances"].to("cpu")
+                        v = v.draw_instance_predictions(instances)
+                        result = v.get_image()[:, :, ::-1]
+                        output_name = f"{path_to_outputdir}/annotated_{i}"
+                        write_res = cv2.imwrite(output_name, result)
+                        counter += 1
         except:
             print("Something went wrong while performing inference on your data. Please check your path directory structure\nUse \"print_model_values\" for debugging")
-
 
 if __name__ == "__main__":
 
@@ -281,4 +280,5 @@ if __name__ == "__main__":
     imgpath = "/home/vim_diesel/Collembola_AI/JPG"
     my_output_inference = "/home/vim_diesel/Collembola_AI/testoutput"
     my_type = "jpg"
-    #test.perfom_inference_on_folder(imgpath, my_output_inference, my_type)
+    test.perfom_inference_on_folder(imgpath, my_output_inference, my_type)
+
