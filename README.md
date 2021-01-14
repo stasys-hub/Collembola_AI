@@ -8,7 +8,7 @@ in this project we retrained the popular [Faster R-CNN](https://arxiv.org/pdf/15
 
 We provide a wrapper script written in python to perfom inference on ones dataset with only having to change a few lines of code. Furthermore this wrapper script simplifies the registration of custom datasets. Since we provide our own model you can retrain this model to extend it's classes and usability. 
 
-Currently we expect the labeled image data to to labeled in COCO Format as this immensly simplifies the registration process with Detectron2. We plan to provide conversion scripts from other common formats in the near future. 
+Currently we expect the labeled image data to be labeled in COCO Format as this immensly simplifies the registration process with Detectron2. We plan to provide conversion scripts from other common formats in the near future. 
 
 ### Dependencies
 
