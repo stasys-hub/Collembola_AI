@@ -1,4 +1,3 @@
-# Collembola_AI
 ![Screenshot](CAI_git.png)
-An Object Detection Algorithm based on VGG16 implemented in Pytroch to categorize Collembola species.
-
+## Welcome to Collembola_AI
+This Repository is an custom implementation of [Detectron2](https://github.com/facebookresearch/detectron2) 
