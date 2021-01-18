@@ -40,10 +40,27 @@ my_work_dir = "/path/to/working/dir"
 my_output_dir = "/path/to/output/dir"
 
 ```
-You can specify Model parameters using the following syntax:
+You can specify Model parameters and use the model using the following syntax:
 ```python
 # Start model with default params  and  a learning rate of 0.00001
  My_Model = collembola_ai(my_work_dir, my_output_dir, learning_rate=0.00001)
+ 
+ # this will print the current model configuration
+ My_Model.print_model_values()
+ 
+ # register the training and My_Model.sets in detectron2
+ My_Model.load_train_test()
+ 
+ # start training 
+ My_Model.start_training()
+ 
+ # start evaluation on My_Model.set
+ My_Model.start_evaluation_on_test()
+ 
+ # run inference on a specified dataset
+ # specifiy image type 
+ my_type = "jpg"
+ My_Model.perfom_inference_on_folder(imgpath, my_output_inference, my_type)
 ```
 Currently supported parameters and their defaults are:
   1. workingdir: path to working directory (str) - required
@@ -56,6 +73,8 @@ Currently supported parameters and their defaults are:
   8. treshhold: Treshhold for Detection in evaluation (float = 0.55)
   
 Please read the prequisites in the script header. They contain information on how to structure the your directory tree. 
-Please don't forget that you can either perform inference with an already trained model (shipped with CollembolaAI) or you can choose to retrain it on your data as well as start from scratch and train a new model. If you want to train/retrain your model you will need a data-set labeled in COCO Format
+Please don't forget that you can either perform inference with an already trained model (shipped with CollembolaAI) or you can choose to retrain it on your data as well as start from scratch and train a new model. If you want to train/retrain your model you will need a data-set labeled in COCO Format.
+
+
 
 Since we don't use segemntation and only want bounding boxes the easiest way to annotate your data is to use [labelimg](https://pypi.org/project/labelImg/) and convert the data to COCO format with a short python script. 
