@@ -21,7 +21,7 @@ We wrote the code on a machine running Ubuntu 20.04 LTS, but any Linux environme
 ### Dependencies
 
 1. Python 3 
-2. Detectron 2 - since we use the Detectron2 API we have the same Dependecies. Please refer to thei [Documentation](https://detectron2.readthedocs.io/tutorials/install.html#requirements). 
+2. Detectron 2 - since we use the Detectron2 API we have the same Dependecies. Please refer to their [Documentation](https://detectron2.readthedocs.io/tutorials/install.html#requirements). 
 3. CUDA enabled Nvidia GPU
 
 ### Installation
@@ -37,7 +37,7 @@ The Script collembolaAI_alpha.py shipped with CollembolAI is the heart of the pr
 # this is were your "train" and output folder should be
 my_work_dir = "/path/to/working/dir"
 # were things will be stored
-my_output_dir = "/home/vim_diesel/Collembola_AI/Training_C_AI_DATA/svd/8k_batch10_svd/"
+my_output_dir = "/path/to/output/dir"
 
 ```
 You can specify Model parameters using the following syntax:
