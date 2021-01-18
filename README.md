@@ -33,11 +33,29 @@ To use CollembolaAI just clone the git Directory into a place of your choice.
 The Script collembolaAI_alpha.py shipped with CollembolAI is the heart of the project. It should work right of the box after you have adapted the path' in the main() function of the script. 
 
 ```python
-s = "Python syntax highlighting"
-print s
-```
+# Please declare your working and output directory for training and test set here. 
+# this is were your "train" and output folder should be
+my_work_dir = "/path/to/working/dir"
+# were things will be stored
+my_output_dir = "/home/vim_diesel/Collembola_AI/Training_C_AI_DATA/svd/8k_batch10_svd/"
 
+```
+You can specify Model parameters using the following syntax:
+```python
+# Start model with default params  and  a learning rate of 0.00001
+ My_Model = collembola_ai(my_work_dir, my_output_dir, learning_rate=0.00001)
+```
+Currently supported parameters and their defaults are:
+  1. workingdir: path to working directory (str) - required
+  2. outputdir : path to output directory (str) - required
+  3. n_iterations: Number of iterations to train (int = 8000)
+  4. work_num: Number of workes (int = 2)
+  5. my_batch_size: Batch size used for training (int = 5) Should work with any Nvidia GPU >= 8GB VRAM
+  6. learning_rate: The models learning rate (float = 0.00025)
+  7. number_classes: number of classes defined in the training data set (int = 10) - adjust to number of labeled species you have!
+  8. treshhold: Treshhold for Detection in evaluation (float = 0.55)
+  
 Please read the prequisites in the script header. They contain information on how to structure the your directory tree. 
 Please don't forget that you can either perform inference with an already trained model (shipped with CollembolaAI) or you can choose to retrain it on your data as well as start from scratch and train a new model. If you want to train/retrain your model you will need a data-set labeled in COCO Format
 
-Since we don't use segemntation and only want bounding boxes the easies way to annotate your data is to use [labelimg](https://pypi.org/project/labelImg/) and convert the data to COCO format with a short python script. 
+Since we don't use segemntation and only want bounding boxes the easiest way to annotate your data is to use [labelimg](https://pypi.org/project/labelImg/) and convert the data to COCO format with a short python script. 
