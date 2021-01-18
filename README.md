@@ -1,6 +1,6 @@
 ![Screenshot](CAI_git.png)
 ## Welcome to Collembola_AI
-in this project we retrained the popular [Faster R-CNN](https://arxiv.org/pdf/1506.01497.pdf) Convolutional Neural Network using Facebooks [Detectron2](https://github.com/facebookresearch/detectron2) Framework to detect 10 different Collembola Species. This model can be used currently to classify the following species:
+in this project we retrained the popular [Faster R-CNN](https://arxiv.org/pdf/1506.01497.pdf) Convolutional Neural Network using Facebooks [Detectron2](https://github.com/facebookresearch/detectron2) Framework to detect 9 different Collembola Species. This model can be used currently to classify the following species:
 1. Sinella
 2. Pseudosinella
 3. Desoria
