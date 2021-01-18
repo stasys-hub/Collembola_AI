@@ -60,6 +60,8 @@ You can specify Model parameters and use the model using the following syntax:
  # run inference on a specified dataset
  # specifiy image type 
  my_type = "jpg"
+ # path to outout for annotated images 
+ my_output_inference = "/path/to/..."
  My_Model.perfom_inference_on_folder(imgpath, my_output_inference, my_type)
 ```
 Currently supported parameters and their defaults are:
