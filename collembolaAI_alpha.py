@@ -2,7 +2,7 @@
 #                                                                                #
 # Title:                                                            CollembolaAI #
 # Authors:                                      Stephan Weißbach & Stanislav Sys #                                                                              
-# Purpose:                                    ML Algorithm to detect Collembolas #                                                                              
+# Purpose:                                      Object Detectiondor  Collembolas #                                                                              
 # Usage:                                                              See ReadMe #
 # Dependencies:                                                       See ReadMe # 
 # Last Update:                                                        11.01.2021 #
@@ -37,13 +37,13 @@ from detectron2.structures import BoxMode
 #     |   |-[...]
 #     |   |-train.json
 #     |
-#     |-test_set1
+#     |-test_set
 #     |   |-img1.jpg
 #     |   |-img2.jpg
 #     |   |-[...]
 #     |   |-test.json
 #     |
-#     |-test_set2
+#     |-inference(optional)
 #         |-img1.jpg
 #         |-img2.jpg
 #         |-[...]
@@ -194,22 +194,6 @@ class collembola_ai:
             print("Something went wrong while evaluating the \"test\" set. Please check your path directory structure\nUse \"print_model_values\" for debugging")
 
 
-        # try:
-        #     for i in os.listdir(os.path.join(self.working_directory,"JPG")):
-        #         if i.endswith("jpg"):
-        #             file_path = os.path.join(self.working_directory, "JPG", i)
-        #             print(f"Processing: \t{file_path}")
-        #             im = cv2.imread(file_path)
-        #             outputs = predictor(im)
-        #             v = Visualizer(im[:, :, ::-1], metadata=dataset_metadata_test, scale=1.)
-        #             instances = outputs["instances"].to("cpu")
-        #             v = v.draw_instance_predictions(instances)
-        #             result = v.get_image()[:, :, ::-1]
-        #             output_name = output_testset2 + "/annotated_" + str(i) + ".jpg"
-        #             write_res = cv2.imwrite(output_name, result)
-        # except:
-        #     print("Something went wrong while performing inference on your data. Please check your path directory structure\nUse \"print_model_values\" for debugging")
-
         print("\n---------------Finished Evaluation---------------")
 
     def perfom_inference_on_folder(self, path_to_images,path_to_outputdir: str, imgtype: str):
@@ -264,21 +248,30 @@ class collembola_ai:
 
 if __name__ == "__main__":
 
-    # stuff do declare 
+    # Please declare your working and output directory for training and test set here. 
     my_work_dir = "/home/vim_diesel/Collembola_AI/Training_C_AI_DATA/svd/"
     my_output_dir = "/home/vim_diesel/Collembola_AI/Training_C_AI_DATA/svd/8k_batch10_svd/"
 
 
-    # run a test
-    test = collembola_ai(my_work_dir, my_output_dir, work_num=5)
-    test.print_model_values()
-    test.load_train_test()
-    #test.start_training()
-    #test.start_evaluation_on_test()
-    # Inference test
+    # Example: Run Collembola_AI with your defined parameters
+    # Define your model parameters
+    My_Model = collembola_ai(my_work_dir, my_output_dir, work_num=5)
+    # print the model parameters
+    My_Model.print_model_values()
+    # register the training and My_Model.sets in detectron2
+    My_Model.load_train_test()
+    # start training 
+    My_Model.start_training()
+    # start evaluation on My_Model.set
+    My_Model.start_evaluation_on_test()
 
+    # Run inference with your trained model on unlabeled data
+    # Path to images to classify
     imgpath = "/home/vim_diesel/Collembola_AI/JPG"
-    my_output_inference = "/home/vim_diesel/Collembola_AI/testoutput"
+    # Path to output-directory of annotated images
+    my_output_inference = "/home/vim_diesel/Collembola_AI/My_Model.utput"
+    # set the image type ( jpg, png, etc...)
     my_type = "jpg"
-    test.perfom_inference_on_folder(imgpath, my_output_inference, my_type)
+    # run the objectdetection
+    My_Model.perfom_inference_on_folder(imgpath, my_output_inference, my_type)
 
