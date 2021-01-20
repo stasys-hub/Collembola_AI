@@ -2,7 +2,7 @@
 #                                                                                #
 # Title:                                                            CollembolaAI #
 # Authors:                                      Stephan Weißbach & Stanislav Sys #                                                                              
-# Purpose:                                      Object Detectiondor  Collembolas #                                                                              
+# Purpose:                                      Object Detection for Collembolas #                                                                              
 # Usage:                                                              See ReadMe #
 # Dependencies:                                                       See ReadMe # 
 # Last Update:                                                        11.01.2021 #
