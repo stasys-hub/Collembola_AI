@@ -28,7 +28,7 @@ We wrote the code on a machine running Ubuntu 20.04 LTS, but any Linux environme
 
 Suggusttion on how to install Detectron2:
 
-'''bash
+```bash
 # create a python env with python version 3.8
 python3.8 -m venv path/to/env
 # activate env
@@ -37,9 +37,7 @@ source activate path/to/env/bin/activate
 pip3 install torch==1.8.1+cu111 torchvision==0.9.1+cu111 torchaudio==0.8.1 -f https://download.pytorch.org/whl/torch_stable.html
 # install Detectron2 
 python -m pip install detectron2 -f   https://dl.fbaipublicfiles.com/detectron2/wheels/cu111/torch1.8/index.html
-
-
-'''
+```
 
 To use CollembolaAI just clone the git Directory into a place of your choice. 
 
