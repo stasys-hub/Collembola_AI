@@ -12,11 +12,11 @@
 
 # Imports
 import os
-import numpy as np
+# import numpy as np
 import json
-import random
+# import random
 import cv2
-import time
+# import time
 import warnings
 from detectron2 import model_zoo
 from detectron2.data import DatasetCatalog, MetadataCatalog, build_detection_test_loader
@@ -117,6 +117,8 @@ class collembola_ai:
     def start_training(self):
         """This function will configure Detectron with your input Parameters and start the Training.
         HINT: If you want to check your Parameters before training use \"print_model_values\""""
+
+
 
         # load a model from the modelzoo and initialize model weights and set our model params
         cfg = get_cfg()
@@ -249,8 +251,8 @@ class collembola_ai:
 if __name__ == "__main__":
 
     # Please declare your working and output directory for training and test set here. 
-    my_work_dir = "/home/vim_diesel/Collembola_AI/Training_C_AI_DATA/svd/"
-    my_output_dir = "/home/vim_diesel/Collembola_AI/Training_C_AI_DATA/svd/8k_batch10_svd/"
+    my_work_dir = "/home/denzeL_vimington/GitRepos/my_Repos/Collembola_AI/Training_C_AI_DATA/normal"
+    my_output_dir = "/home/denzeL_vimington/GitRepos/my_Repos/Collembola_AI/Training_C_AI_DATA/normal/8k_batch10/"
 
 
     # Example: Run Collembola_AI with your defined parameters
@@ -262,16 +264,16 @@ if __name__ == "__main__":
     My_Model.load_train_test()
     # start training 
     My_Model.start_training()
-    # start evaluation on My_Model.set
-    My_Model.start_evaluation_on_test()
+    # # start evaluation on My_Model.set
+    # My_Model.start_evaluation_on_test()
 
-    # Run inference with your trained model on unlabeled data
-    # Path to images to classify
-    imgpath = "/home/vim_diesel/Collembola_AI/JPG"
-    # Path to output-directory of annotated images
-    my_output_inference = "/home/vim_diesel/Collembola_AI/My_Model.utput"
-    # set the image type ( jpg, png, etc...)
-    my_type = "jpg"
-    # run the objectdetection
-    My_Model.perfom_inference_on_folder(imgpath, my_output_inference, my_type)
+    # # Run inference with your trained model on unlabeled data
+    # # Path to images to classify
+    # imgpath = "/home/vim_diesel/Collembola_AI/JPG"
+    # # Path to output-directory of annotated images
+    # my_output_inference = "/home/vim_diesel/Collembola_AI/My_Model.output"
+    # # set the image type ( jpg, png, etc...)
+    # my_type = "jpg"
+    # # run the objectdetection
+    # My_Model.perfom_inference_on_folder(imgpath, my_output_inference, my_type)
 
