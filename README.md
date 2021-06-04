@@ -90,6 +90,7 @@ Currently supported parameters and their defaults are:
 Please read the prequisites in the script header. They contain information on how to structure the your directory tree. 
 Please don't forget that you can either perform inference with an already trained model (shipped with CollembolaAI) or you can choose to retrain it on your data as well as start from scratch and train a new model. If you want to train/retrain your model you will need a data-set labeled in COCO Format.
 
-
+### TODOs:
+Split the script and mnake it modular
 
 Since we don't use segemntation and only want bounding boxes the easiest way to annotate your data is to use [labelimg](https://pypi.org/project/labelImg/) and convert the data to COCO format with a short python script. 
