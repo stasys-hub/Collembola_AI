@@ -33,8 +33,9 @@ Suggusttion on how to install Detectron2:
 python3.8 -m venv path/to/env
 # activate env
 source activate path/to/env/bin/activate
-# install pytorch and torchvision ofr CUDA 11.1 (may differ -> depends on your setup)
-pip3 install torch==1.8.1+cu111 torchvision==0.9.1+cu111 torchaudio==0.8.1 -f https://download.pytorch.org/whl/torch_stable.html
+# install pytorch and torchvision for CUDA 11.0 (may differ -> depends on your setup) 
+# pytorch 1.8 ssems to make poblems with detectron2 currently, so i would recommend to use 1.7
+pip install torch==1.7.0+cu111 torchvision==0.8.1+cu110 torchaudio===0.7.0 -f https://download.pytorch.org/whl/torch_stable.html
 # install Detectron2 
 python -m pip install detectron2 -f   https://dl.fbaipublicfiles.com/detectron2/wheels/cu111/torch1.8/index.html
 ```
