@@ -37,8 +37,8 @@ source activate path/to/env/bin/activate
 # pytorch 1.8 ssems to make poblems with detectron2 currently, so i would recommend to use 1.7
 pip install torch==1.7.0+cu111 torchvision==0.8.1+cu110 torchaudio===0.7.0 -f https://download.pytorch.org/whl/torch_stable.html
 # install Detectron2 
-python -m pip install detectron2 -f   https://dl.fbaipublicfiles.com/detectron2/wheels/cu111/torch1.8/index.html
-```
+python -m pip install detectron2 -f https://dl.fbaipublicfiles.com/detectron2/wheels/cu110/torch1.7/index.html
+
 
 To use CollembolaAI just clone the git Directory into a place of your choice. 
 
