@@ -91,7 +91,11 @@ class collembola_ai:
         self.num_workers = int(config['OPTIONAL']['number_of_workers'])
         self.batch_size = int(config['OPTIONAL']['batch_size'])
         self.learning_rate = float(config['OPTIONAL']['learning_rate'])
-        self.num_classes = int(config['OPTIONAL']['number_of_classes'])
+
+        with open(os.path.join(self.train_directory, "train.json"), 'r') as js:
+            self.num_classes = len(json.load(js)['categories'])
+
+        print('Found {} classes in the training annotation file'.format(self.num_classes))
         self.threshold = float(config['OPTIONAL']['detection_treshold'])
         self.model_zoo_config = config['OPTIONAL']['model_zoo_config']
 
