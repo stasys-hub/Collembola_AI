@@ -159,7 +159,7 @@ class collembola_ai:
         cfg.SOLVER.MAX_ITER = self.num_iter
         cfg.MODEL.ROI_HEADS.NUM_CLASSES = self.num_classes
         cfg.nms = True
-        cfg.MODEL.DEVICE = 0
+        cfg.MODEL.DEVICE = self.gpu_num
         # This will start the Trainer -> Runtime depends on hardware and parameters
         os.makedirs(self.output_directory, exist_ok=True)
         trainer = DefaultTrainer(cfg)
