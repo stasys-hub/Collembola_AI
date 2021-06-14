@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # ------------------------------------------------------------------------------ #
 #                                                                                #
 # Title:                                                            CollembolaAI #
@@ -70,7 +71,7 @@ class collembola_ai:
     config.read("CAI.conf")
 
     # def __init__(self, workingdir: str, outputdir: str, n_iterations: int = 8000, work_num: int = 2, my_batch_size: int = 5, learning_rate: float = 0.00025, number_classes:int = 10, treshhold: float = 0.55):
-    def __init__(self, config_path='CAI.conf', gpu_num=0):
+    def __init__(self, config_path='CAI.conf', gpu_num='0'):
         """Function to initialize the CollembolaAI main class. These Parameters will be used to configure Detectron2"""
         
         
@@ -79,22 +80,23 @@ class collembola_ai:
 
         # set project directories
         self.project_directory = config['DEFAULT']['project_directory']
-        self.output_directory = os.path.join(self.project_directory, config['DEFAULT']['model_name'])
+        self.model_name = config['DEFAULT']['model_name']
+        self.output_directory = os.path.join(self.project_directory, self.model_name)
         self.train_directory = os.path.join(self.project_directory, "train")
         self.test_directory = os.path.join(self.project_directory, "test")
-        self.inference_directory = os.path.join(self.project_directory, "inference")
+        self.inference_directory = os.path.join(self.project_directory, config['OPTIONAL']["inference_directory"])
         
         # set model parameters
-        self.num_iter = config['OPTIONAL']['iterations']
-        self.num_workers = config['OPTIONAL']['number_of_workers']
-        self.batch_size = config['OPTIONAL']['batch_size']
-        self.learning_rate = config['OPTIONAL']['learning_rate']
-        self.num_classes = config['OPTIONAL']['number_of_classes']
-        self.threshold = config['OPTIONAL']['detection_treshold']
+        self.num_iter = int(config['OPTIONAL']['iterations'])
+        self.num_workers = int(config['OPTIONAL']['number_of_workers'])
+        self.batch_size = int(config['OPTIONAL']['batch_size'])
+        self.learning_rate = float(config['OPTIONAL']['learning_rate'])
+        self.num_classes = int(config['OPTIONAL']['number_of_classes'])
+        self.threshold = float(config['OPTIONAL']['detection_treshold'])
         self.model_zoo_config = config['OPTIONAL']['model_zoo_config']
-        
+
         # set gpu device to use
-        self.gpu_num = gpu_num
+        self.gpu_num = int(gpu_num)
         
 
     def print_model_values(self):
@@ -140,8 +142,6 @@ class collembola_ai:
         """This function will configure Detectron with your input Parameters and start the Training.
         HINT: If you want to check your Parameters before training use \"print_model_values\""""
 
-
-
         # load a model from the modelzoo and initialize model weights and set our model params
         cfg = get_cfg()
         cfg.merge_from_file(model_zoo.get_config_file(self.model_zoo_config))
@@ -155,8 +155,7 @@ class collembola_ai:
         cfg.SOLVER.MAX_ITER = self.num_iter
         cfg.MODEL.ROI_HEADS.NUM_CLASSES = self.num_classes
         cfg.nms = True
-        cfg.MODEL.DEVICE = self.gpu_num
-
+        cfg.MODEL.DEVICE = 0
         # This will start the Trainer -> Runtime depends on hardware and parameters
         os.makedirs(self.output_directory, exist_ok=True)
         trainer = DefaultTrainer(cfg)
@@ -182,6 +181,7 @@ class collembola_ai:
         cfg.MODEL.DEVICE = self.gpu_num
 
         #config for test mode
+        print(os.path.join(self.output_directory, "model_final.pth"))
         cfg.MODEL.WEIGHTS = os.path.join(self.output_directory, "model_final.pth")
         cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = self.threshold
         cfg.DATASETS.TEST = ("test", )
@@ -190,9 +190,7 @@ class collembola_ai:
         cfg.MODEL.RPN.POST_NMS_TOPK_TEST = 10000
         cfg.MODEL.RPN.PRE_NMS_TOPK_TEST = 10000
         cfg.TEST.DETECTIONS_PER_IMAGE = 10000
-        
         predictor = DefaultPredictor(cfg)
-
         #prepare test dataset
         dataset_dicts_test = DatasetCatalog.get("test")
         dataset_metadata_test = MetadataCatalog.get("test")
@@ -242,7 +240,7 @@ class collembola_ai:
             cfg.MODEL.WEIGHTS = os.path.join(self.output_directory, "model_final.pth")
             cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = self.threshold
             cfg.DATASETS.TEST = ("test", )
-            
+            cfg.MODEL.DEVICE = self.gpu_num 
             #Improving detection on crowed picture ?
             cfg.MODEL.RPN.POST_NMS_TOPK_TEST = 10000
             cfg.MODEL.RPN.PRE_NMS_TOPK_TEST = 10000
@@ -253,11 +251,12 @@ class collembola_ai:
             #prepare test dataset for metadata
             dataset_dicts_test = DatasetCatalog.get("test")
             dataset_metadata_test = MetadataCatalog.get("test")
-        except:
+        except Exception as e:
+            print(e)
             print("Something went wrong while loading the model configuration. Please Check your path\'")
-
-        inference_out = os.path.join(self.inference_directory, 'output')
-            
+            raise
+ 
+        inference_out = os.path.join(self.inference_directory, self.model_name)          
         n_files = len(([f for f in os.listdir(self.inference_directory) if f.endswith(imgtype)]))
         counter = 1
 
@@ -292,33 +291,28 @@ if __name__ == "__main__":
     parser=argparse.ArgumentParser()
 
     parser.add_argument('-c', '--config_file', 
-            help='''Path of the configuration file''')
+            help='''Path of the configuration file (default: "./CAI.conf")''')
     
-    parser.add_argument('-t', '--train'
-            help='''(re-)Train a model using the train set of pictures''')
+    parser.add_argument('-t', '--train',action='store_true',
+            help='''(re-)Train a model using the train set of pictures (default: skip)''')
     
-    parser.add_argument('-e', '--evaluate'
-            help='''Evaluate the model using the test set of pictures''')
+    parser.add_argument('-e', '--evaluate',action='store_true',
+            help='''Evaluate the model using the test set of pictures (default: skip)''')
     
-    parser.add_argument('-a', '--annotate'
-            help='''Annotate the inference set of pictures''')
+    parser.add_argument('-a', '--annotate',action='store_true',
+            help='''Annotate the inference set of pictures (default: skip)''')
     
-    parser.add_argument('--visible_gpu', default="0"
-            help='''List of visible gpu to CUDA''')
+    parser.add_argument('--visible_gpu', default="0",
+            help='''List of visible gpu to CUDA (default: "0")''')
     
-    parser.add_argument('--gpu_num', default="0"
-            help='''Set the gpu device number to use''')
+    parser.add_argument('--gpu_num', default="0",
+            help='''Set the gpu device number to use (default: "0")''')
 
     args=parser.parse_args()
 
         
     os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
     os.environ["CUDA_VISIBLE_DEVICES"] = args.visible_gpu
-
-
-    # Please declare your working and output directory for training and test set here. 
-    # my_work_dir = "/home/denzeL_vimington/GitRepos/my_Repos/Collembola_AI/Training_C_AI_DATA/svd"
-    # my_output_dir = "/home/denzeL_vimington/GitRepos/my_Repos/Collembola_AI/Training_C_AI_DATA/svd/8k_batch10_new/"
 
 
     # Example: Run Collembola_AI with your defined parameters
@@ -333,10 +327,14 @@ if __name__ == "__main__":
     if args.train:
         # start training 
         My_Model.start_training()
+    else:
+        print("Skipping training")
 
     if args.evaluate:
         # start evaluation on My_Model.set
         My_Model.start_evaluation_on_test()
+    else:
+        print("Skipping evaluation")
 
     if args.annotate:
         # Run inference with your trained model on unlabeled data       
@@ -344,3 +342,5 @@ if __name__ == "__main__":
         my_type = "jpg"
         # run the objectdetection
         My_Model.perfom_inference_on_folder(imgtype="jpg")
+    else:
+        print("Nothing to annotate")
