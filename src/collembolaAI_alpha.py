@@ -291,10 +291,9 @@ class collembola_ai:
 if __name__ == "__main__":
 
 
-
     parser=argparse.ArgumentParser()
 
-    parser.add_argument('-c', '--config_file', 
+    parser.add_argument('config_file', type=str, 
             help='''Path of the configuration file (default: "./CAI.conf")''')
     
     parser.add_argument('-t', '--train',action='store_true',
@@ -306,11 +305,11 @@ if __name__ == "__main__":
     parser.add_argument('-a', '--annotate',action='store_true',
             help='''Annotate the inference set of pictures (default: skip)''')
     
-    parser.add_argument('--visible_gpu', default="0",
-            help='''List of visible gpu to CUDA (default: "0")''')
+    parser.add_argument('--visible_gpu', type=str, default="0",
+            help='''List of visible gpu to CUDA (default: "0", example: "0,1")''')
     
-    parser.add_argument('--gpu_num', default="0",
-            help='''Set the gpu device number to use (default: "0")''')
+    parser.add_argument('--gpu_num', type=int, default=0,
+            help='''Set the gpu device number to use (default: 0)''')
 
     args=parser.parse_args()
 
