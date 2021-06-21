@@ -12,7 +12,7 @@
 
 
 # Imports
-
+import traceback
 import argparse
 import configparser
 import cv2
@@ -225,6 +225,7 @@ class collembola_ai:
                 write_res = cv2.imwrite(output_name, result)
                 i += 1
         except:
+            traceback.print_exc()
             print("Something went wrong while evaluating the \"test\" set. Please check your path directory structure\nUse \"print_model_values\" for debugging")
 
 
