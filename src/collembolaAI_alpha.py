@@ -16,6 +16,7 @@ import traceback
 import argparse
 import configparser
 import cv2
+from detectron2.modeling import build_model
 from detectron2 import model_zoo
 from detectron2.data import DatasetCatalog, MetadataCatalog, build_detection_test_loader
 from detectron2.utils.visualizer import Visualizer, ColorMode
@@ -101,7 +102,7 @@ class collembola_ai:
 
         # set gpu device to use
         self.gpu_num = int(gpu_num)
-        
+        self.trainer = None        
 
     def print_model_values(self):
         """This function will print all model parameters which can be set by the user. It is useful if you have path problems.
@@ -165,7 +166,6 @@ class collembola_ai:
         trainer = DefaultTrainer(cfg)
         trainer.resume_or_load(resume=False)
         trainer.train()
-
         print("\n---------------Finished Training---------------")
 
     def start_evaluation_on_test(self):
@@ -206,6 +206,12 @@ class collembola_ai:
         #output_testset2 = os.path.join(self.output_directory, "testset2")
         #os.makedirs(output_testset2, exist_ok=True)
 
+        trainer = DefaultTrainer(cfg)
+        trainer.resume_or_load(resume=True)
+
+        evaluator = COCOEvaluator("test", cfg, False, output_dir=output_test_res)
+        val_loader = build_detection_test_loader(cfg, "test")
+        print(inference_on_dataset(trainer.model, val_loader, evaluator))
 
         try:
             i = 0
@@ -228,6 +234,13 @@ class collembola_ai:
             traceback.print_exc()
             print("Something went wrong while evaluating the \"test\" set. Please check your path directory structure\nUse \"print_model_values\" for debugging")
 
+        #model = build_model(cfg)
+
+        #evaluator = COCOEvaluator("test", cfg, False, output_dir=output_test_res)
+        #val_loader = build_detection_test_loader(cfg, "test")
+        #print(inference_on_dataset(model, val_loader, evaluator))
+        #output_testset2 = os.path.join(self.output_directory, "testset2")
+        #os.makedirs(output_testset2, exist_ok=True)
 
         print("\n---------------Finished Evaluation---------------")
 
