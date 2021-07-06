@@ -15,6 +15,10 @@
 import traceback
 import argparse
 import configparser
+
+from cocosets_utils import testresults2coco, coco2df, draw_coco_bbox, \
+                           plot_test_results, deduplicate_overlapping_preds, \
+                           match_true_n_pred_box, plot_confusion_matrix
 import cv2
 from detectron2.modeling import build_model
 from detectron2 import model_zoo
@@ -26,8 +30,11 @@ from detectron2.data.datasets import register_coco_instances
 from detectron2.evaluation import COCOEvaluator, inference_on_dataset
 from detectron2.structures import BoxMode
 import json
+import numpy as np
 import os
+import pandas as pd
 import PIL
+from sklearn.metrics import confusion_matrix
 import warnings
 
 PIL.Image.MAX_IMAGE_PIXELS = 500000000
@@ -129,6 +136,7 @@ class collembola_ai:
 
         try:
             # read train.json file
+
             with open(os.path.join(self.train_directory, "train.json")) as f:
                 imgs_anns = json.load(f)
 
@@ -141,11 +149,39 @@ class collembola_ai:
 
         except:
             print("ERROR!\nUnable to load model configurations!\nPlease check your input and use \"print_model_values\" for debugging ")
+        
+    def describe_train_test(self):
+            print('Outputing some infos about the train and test dataset')
+            with open(os.path.join(self.test_directory, "test.json"), 'r') as j:
+                ttruth =  json.load(j)
+                df_ttruth = coco2df(ttruth)
+                df_ttruth['id_true'] = df_ttruth['id']
 
+    
+            with open(os.path.join(self.train_directory, "train.json"), 'r') as j:
+                train =  json.load(j)
+                df_train = coco2df(train)
+                df_train['id_train'] = df_train['id']   
+
+            print('Abundance of each species in the train and test pictures\n')
+            tt_abundances = df_train.name.value_counts().to_frame().join(df_ttruth.name.value_counts(), lsuffix='_train', rsuffix='_test')
+            tt_abundances.columns = ['Train', 'Test']
+            print(tt_abundances.to_markdown())
+            tt_abundances.to_csv(os.path.join(self.project_directory, "train_test_species_abundance.tsv"), sep='\t')
+
+            print('\n\nIndividual average area per species\n')
+            sum_abundance = tt_abundances.sum(axis=1)
+            sum_abundance.name='abundance'
+            species_stats = pd.concat([df_train.groupby('name').sum()['area'].to_frame().reset_index(),
+            df_ttruth.groupby('name').sum()['area'].to_frame().reset_index()]).groupby('name').sum().join(sum_abundance)
+            species_stats['avg_area'] = round(species_stats['area'] / species_stats['abundance']).astype('int')
+
+            print(species_stats['avg_area'].to_markdown())
+            species_stats['avg_area'].to_csv(os.path.join(self.project_directory, "species_avg_individual_area.tsv"), sep='\t')
 
     def start_training(self):
-        """This function will configure Detectron with your input Parameters and start the Training.
-        HINT: If you want to check your Parameters before training use \"print_model_values\""""
+        '''This function will configure Detectron with your input Parameters and start the Training.
+        HINT: If you want to check your Parameters before training use "print_model_values"'''
 
         # load a model from the modelzoo and initialize model weights and set our model params
         cfg = get_cfg()
@@ -212,27 +248,31 @@ class collembola_ai:
         evaluator = COCOEvaluator("test", cfg, False, output_dir=output_test_res)
         val_loader = build_detection_test_loader(cfg, "test")
         print(inference_on_dataset(trainer.model, val_loader, evaluator))
-
-        try:
-            i = 0
-            for d in dataset_dicts_test:
-                #create variable with output name
-                output_name = output_test_res + "/annotated_" + str(i) + ".jpg"
-                img = cv2.imread(d["file_name"])
-                print(f"Processing: \t{output_name}")
-                #make prediction
-                outputs = predictor(img)
-                #draw prediction
-                visualizer = Visualizer(img[:, :, ::-1], metadata=dataset_metadata_test, scale=1.)
-                instances = outputs["instances"].to("cpu")
-                vis = visualizer.draw_instance_predictions(instances)
-                result = vis.get_image()[:, :, ::-1]
-                #write image
-                write_res = cv2.imwrite(output_name, result)
-                i += 1
-        except:
-            traceback.print_exc()
-            print("Something went wrong while evaluating the \"test\" set. Please check your path directory structure\nUse \"print_model_values\" for debugging")
+        
+        # From Clem: I deactivate the following block, its function is replaced by the five above lines
+        # I also made a custom function for vizualisation which may not be as streamlined
+        # as the detectron visualizer, but so far provide a more readble output.
+        
+        #try:
+        #    i = 0
+        #    for d in dataset_dicts_test:
+        #         #create variable with output name
+        #        output_name = output_test_res + "/annotated_" + str(i) + ".jpg"
+        #        img = cv2.imread(d["file_name"])
+        #        print(f"Processing: \t{output_name}")
+        #        #make prediction
+        #        outputs = predictor(img)
+        #        #draw prediction
+        #        visualizer = Visualizer(img[:, :, ::-1], metadata=dataset_metadata_test, scale=1.)
+        #        instances = outputs["instances"].to("cpu")
+        #        vis = visualizer.draw_instance_predictions(instances)
+        #        result = vis.get_image()[:, :, ::-1]
+        #        #write image
+        #        write_res = cv2.imwrite(output_name, result)
+        #        i += 1
+        #except:
+        #    traceback.print_exc()
+        #    print("Something went wrong while evaluating the \"test\" set. Please check your path directory structure\nUse \"print_model_values\" for debugging")
 
         #model = build_model(cfg)
 
@@ -241,12 +281,78 @@ class collembola_ai:
         #print(inference_on_dataset(model, val_loader, evaluator))
         #output_testset2 = os.path.join(self.output_directory, "testset2")
         #os.makedirs(output_testset2, exist_ok=True)
+        print('Report on evaluation')
+
+        tpred = testresults2coco(self.test_directory, self.output_directory, write=True)
+
+        print('\n\nLoading predictions and deduplicating overlaping predictions')
+        df_pred = deduplicate_overlapping_preds(coco2df(tpred), 0.4)
+        
+        with open(os.path.join(self.test_directory, "test.json"), 'r') as j:
+                ttruth =  json.load(j)
+                df_ttruth = coco2df(ttruth)
+                df_ttruth['id_true'] = df_ttruth['id']
+
+        with open(os.path.join(self.train_directory, "train.json"), 'r') as j:
+                train =  json.load(j)
+                df_train = coco2df(train)
+                df_train['id_train'] = df_train['id']
+
+        tt_abundances = df_train.name.value_counts().to_frame().join(df_ttruth.name.value_counts(), lsuffix='_train', rsuffix='_test')
+        tt_abundances.columns = ['Train', 'Test']         
+
+        print('\n\nAbundance and area of each species in the train and test pictures (true and predicted)\n')
+        tt_abundances = tt_abundances.join(df_pred.name.value_counts())\
+                                    .join(df_ttruth.groupby('name').sum()['area'])\
+                                    .join(df_pred.groupby('name').sum()['area'], rsuffix="pred")
+        tt_abundances.columns = ['Train', 'Test True', 'Test Pred', 'Test True Area', 'Test Pred Area']
+        tt_abundances['Perc Pred True'] = tt_abundances['Test Pred Area'] / tt_abundances['Test True Area'] * 100
+        tt_abundances['Test True Contribution To Total Area'] =  tt_abundances['Test True Area'] / tt_abundances['Test True Area'].sum() * 100
+        tt_abundances['Test Pred Contribution To Total Area'] =  tt_abundances['Test Pred Area'] / tt_abundances['Test Pred Area'].sum() * 100
+        print(tt_abundances.to_markdown())
+        print(self.output_directory)
+        tt_abundances.to_csv(os.path.join(self.output_directory, "test_results/species_abundance_n_area.tsv"), sep='\t')
+        pairs = match_true_n_pred_box(df_ttruth, df_pred, IoU_threshold=0.4)
+        perc_detected_animals = 100 - (pairs.id_pred.isnull().sum() / pairs.id_true.notnull().sum() * 100)
+        perc_correct_class = pairs['is_correct_class'].sum() / pairs.dropna().shape[0] * 100
+
+        print(f'\n\n')
+        print(f'{round(perc_detected_animals, 1)}% of animals where detected')
+        print(f'{round(pairs["name_x"].isnull().sum() / pairs.id_true.notnull().sum() * 100, 2)}% of predicted labels are false positive')
+        print(f'{round(perc_correct_class, 1)}% of detected animals where assigned the correct label')
+
+        df_pred = df_pred.merge(pairs[['id_pred', 'id_true']], how='left', on='id_pred')
+        df_pred['is_false_positive'] = True
+        df_pred['is_false_positive'] = df_pred['is_false_positive'].where(df_pred['id_true'].isnull(), False)
+
+        print('\n\nDrawing the predicted annotations of the test pictures to support visual verification')
+        print('Do not use for testing or for training ! =)')
+        draw_coco_bbox(df_pred, os.path.join(self.output_directory, "test_results"), self.test_directory, prefix="predicted", line_width=10, fontsize = 150, fontYshift = -125)
+
+        mcm = confusion_matrix(pairs.dropna().name_x, pairs.dropna().name_y.fillna('NaN'), labels = pairs.dropna().name_x.unique())
+        plot_confusion_matrix(mcm, pairs.dropna().name_x.unique(), normalize=False,
+                 write=os.path.join(self.output_directory, "test_results/cm_onlydetected.png"))
+
+        #The normalized matrix output is bugged in the plot_confusion_matrix function from sklearn, thus I normalize the 
+        # matrix here before plotting
+        mcm = mcm.astype('float') / mcm.sum(axis=1)[:, np.newaxis] * 100
+        mcm = mcm.round(1)
+        plot_confusion_matrix(mcm, pairs.dropna().name_x.unique(), normalize=False, 
+                   write=os.path.join(self.output_directory, "test_results/cm_norm_onlydetected.png"))
+
+        mcm = confusion_matrix(pairs.name_x.fillna('NaN'), pairs.name_y.fillna('NaN'), labels = pairs.fillna('NaN').name_x.unique())
+        plot_confusion_matrix(mcm, np.append(pairs.name_x.unique(), 'NaN'), normalize=False,
+                   write=os.path.join(self.output_directory, "test_results/cm_inclNaN.png"))
+        mcm = mcm.astype('float') / mcm.sum(axis=1)[:, np.newaxis] * 100
+        mcm = np.nan_to_num(mcm.round(1))                                                                                 
+        plot_confusion_matrix(mcm, pairs.fillna('NaN').name_x.unique(), normalize=False, 
+                         write=os.path.join(self.output_directory, "test_results/cm_norm_inclNaN.png"))     
 
         print("\n---------------Finished Evaluation---------------")
 
     def perfom_inference_on_folder(self, imgtype = "jpg"):
-        """This function can be used to test a trained model with a set of images or to perform inference on data you want to classify.
-        IMPORTANT: You still have to load a model using \"load_train_test\""""
+        '''This function can be used to test a trained model with a set of images or to perform inference on data you want to classify.
+        IMPORTANT: You still have to load a model using "load_train_test"'''
         try:
             # reload the model
             cfg = get_cfg()
@@ -302,9 +408,9 @@ class collembola_ai:
         except:
             print("Something went wrong while performing inference on your data. Please check your path directory structure\nUse \"print_model_values\" for debugging")
 
-if __name__ == "__main__":
 
 
+def main():
     parser=argparse.ArgumentParser()
 
     parser.add_argument('config_file', type=str, 
@@ -318,6 +424,9 @@ if __name__ == "__main__":
     
     parser.add_argument('-a', '--annotate',action='store_true',
             help='''Annotate the inference set of pictures (default: skip)''')
+
+    parser.add_argument('-d', '--describe_train_test',action='store_true',
+            help='''Output some descriptions elements for the train and test set in the project directory''')
     
     parser.add_argument('--visible_gpu', type=str, default="0",
             help='''List of visible gpu to CUDA (default: "0", example: "0,1")''')
@@ -340,7 +449,10 @@ if __name__ == "__main__":
     My_Model.print_model_values()
     # register the training and My_Model.sets in detectron2
     My_Model.load_train_test()
-    
+
+    if args.describe_train_test:
+        My_Model.describe_train_test()
+
     if args.train:
         # start training 
         My_Model.start_training()
@@ -361,3 +473,7 @@ if __name__ == "__main__":
         My_Model.perfom_inference_on_folder(imgtype="jpg")
     else:
         print("Nothing to annotate")
+
+
+if __name__ == "__main__":
+    main()
