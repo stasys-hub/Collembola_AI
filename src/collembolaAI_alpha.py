@@ -2,7 +2,7 @@
 # ------------------------------------------------------------------------------ #
 #                                                                                #
 # Title:                                                            CollembolaAI #
-# Authors:                                      Stephan Weißbach & Stanislav Sys #                                                                              
+# Authors:                  Stephan Weißbach & Stanislav Sys & Clement Schneider #                                                                              
 # Purpose:                                      Object Detection for Collembolas #                                                                              
 # Usage:                                                              See ReadMe #
 # Dependencies:                                                       See ReadMe # 
@@ -16,7 +16,7 @@ import traceback
 import argparse
 import configparser
 
-from cocosets_utils import testresults2coco, coco2df, draw_coco_bbox, \
+from cocosets_utils import get_truthset, testresults2coco, coco2df, draw_coco_bbox, \
                            plot_test_results, deduplicate_overlapping_preds, \
                            match_true_n_pred_box, plot_confusion_matrix
 import cv2

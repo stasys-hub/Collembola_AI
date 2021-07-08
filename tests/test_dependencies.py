@@ -7,35 +7,30 @@
 #                                                                                #
 # ------------------------------------------------------------------------------ #
 
+ #imports
 import importlib
-import subprocess
 import sys
 
 
-assert sys.version_info >= (3, 6)
 
-# get installed packages from pip freeze
-reqs = subprocess.check_output([sys.executable, '-m', 'pip', 'freeze'])
-#split Strings by "==", so we don't look at versioning
-installed_packages = [r.decode().split('==')[0] for r in reqs.split()]
+def check_dependencies(list_of_dependencies: list) -> None:
 
-# list of necessary deps
-deps = ["torch", "detectron2", "torchvision", "opencv-python"]
-
-# check if deps are installed and loadable
-for dependency in deps:
-    if (dependency in installed_packages):
-        print(f'{dependency}:\t is installed')
+    for dependency in list_of_dependencies:
         try:
-            if(dependency =="opencv-python"):
-                importlib.import_module("cv2")
-            else:
-                importlib.import_module(dependency)
+            # load dependency
+            importlib.import_module(dependency)
+            print(f"Succesfully loaded:\t {dependency}")
 
         except ModuleNotFoundError:
             print(f'ERROR: Can\'t import module: {dependency}!' )
             pass
 
-    else:
-        print(f'ERROR: {dependency}:\t not installed')
+if __name__=="__main__":
 
+    # check python version
+    assert sys.version_info >= (3, 6)
+
+    # list of dpendecies
+    deps = ["torch", "detectron2", "torchvision", "cv2","pandas", "sklearn", "PIL", "json", "shapely", "numpy"]
+
+    check_dependencies(deps)

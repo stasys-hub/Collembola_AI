@@ -7,35 +7,51 @@ from PIL import Image, ImageFont, ImageDraw, ImageEnhance
 from shapely.geometry import box
 import random
 
+def get_truthset(test_dir: str):
+    """
+    Loads the truth set as json file and returns a JSON Obejct
 
-def testresults2coco(test_dir, inference_dir, write=False):
+    """
+    try:
+        with open(f'{test_dir}/test.json', 'r') as j:
+            ttruth = json.load(j)
+            return ttruth
+
+    except FileNotFoundError:
+        print(f"Could not open {test_dir}/test.json")
+
+
+def testresults2coco(test_dir: str, inference_dir: str, write: bool = False):
     '''
     Return a full Coco instance from the test results annotations
     If write parameter is set to True, then write the COCO to json in the test results directory
     '''
-    
+
     # Open ground truth test annotations (COCO)
-    with open(f'{test_dir}/test.json', 'r') as j:
-        ttruth = json.load(j)
+    ttruth = get_truthset(test_dir)
 
     # Open inference results and make it a complete COCO format by replacing the ttruth COCO annotations
     # and creating other standard fields (not all useful to us, but could allow to process it with further "COCO tools")
     tinference = ttruth.copy()
-    with open(f'{inference_dir}/test_results/coco_instances_results.json', 'r') as j:
-        tinference['annotations'] = json.load(j)
-        
-    anid = 0
-    for d in tinference['annotations']:
-        d['iscrowd'] = 0
-        d['segmentation'] = []
-        d['id'] = anid
-        anid += 1
-    
+    try:
+        with open(f'{inference_dir}/test_results/coco_instances_results.json', 'r') as j:
+            tinference['annotations'] = json.load(j)
+
+        anid = 0
+        for d in tinference['annotations']:
+            d['iscrowd'] = 0
+            d['segmentation'] = []
+            d['id'] = anid
+            anid += 1
+
+    except FileNotFoundError:
+        print("Could not load Results from JSON file")
+
     # Write inference results in COCO format json
     if write:
         with open(f'{inference_dir}/test_results/results.json', 'w') as j:
             json.dump(tinference, j)
-    
+
     return tinference
 
 
@@ -51,54 +67,54 @@ def coco2df(coco):
     coco_df = pd.DataFrame(coco['annotations'])\
                     .merge(classes_df, on="category_id", how='left')\
                     .merge(images_df, on="image_id", how='left')
-    
+
     getbox = lambda x : box(x[0],x[1],x[0]+x[2],x[1]+x[3])
     coco_df['box'] = coco_df['bbox'].apply(getbox)
     coco_df['area'] = coco_df['box'].apply(lambda x: x.area)
 
     return coco_df
 
-def draw_coco_bbox(coco, out_dir, test_dir, prefix='annotated', line_width=10, fontsize = 80, fontYshift = -50):
+def draw_coco_bbox(coco, out_dir:str, test_dir: str, prefix: str = 'annotated', line_width: int = 10, fontsize: int = 80, fontYshift: int = -50) -> None:
     '''
-    
+
     '''
-    
-    colors = ['aliceblue', 'antiquewhite', 'aqua', 'aquamarine', 'azure', 
-              'beige', 'bisque', 'blanchedalmond', 'blue', 'blueviolet', 
-              'burlywood', 'cadetblue', 'chartreuse', 'chocolate', 'coral', 
-              'cornflowerblue', 'cornsilk', 'crimson', 'cyan', 'deeppink', 'deepskyblue', 
-              'dimgray', 'dimgrey', 'dodgerblue', 'firebrick', 'floralwhite', 'forestgreen', 
-              'fuchsia', 'gainsboro', 'ghostwhite', 'gold', 'goldenrod', 'gray', 'grey', 'green', 
-              'greenyellow', 'honeydew', 'hotpink', 'indianred', 'ivory', 'khaki', 'lavender', 
-              'lavenderblush', 'lawngreen', 'lemonchiffon', 'lightblue', 'lightcoral', 'lightcyan', 
-              'lightgoldenrodyellow', 'lightgreen', 'lightgray', 'lightgrey', 'lightpink', 'lightsalmon', 
-              'lightseagreen', 'lightskyblue', 'lightslategray', 'lightslategrey', 'lightsteelblue', 
-              'lightyellow', 'lime', 'limegreen', 'linen', 'magenta', 'maroon', 'mediumaquamarine', 'mediumblue', 
-              'mediumorchid', 'mediumpurple', 'mediumseagreen', 'mediumslateblue', 'mediumspringgreen', 'mediumturquoise', 
-              'mediumvioletred', 'mintcream', 'mistyrose', 'moccasin', 'navajowhite', 'oldlace', 'olive', 'olivedrab', 'orange', 
-              'orangered', 'orchid', 'palegoldenrod', 'palegreen', 'paleturquoise', 'palevioletred', 'papayawhip', 'peachpuff', 
-              'peru', 'pink', 'plum', 'powderblue', 'purple', 'rebeccapurple', 'red', 'rosybrown', 'royalblue', 'saddlebrown', 
-              'salmon', 'sandybrown', 'seagreen', 'seashell', 'sienna', 'silver', 'skyblue', 'slateblue', 'slategray', 'slategrey', 
-              'snow', 'springgreen', 'steelblue', 'tan', 'teal', 'thistle', 'tomato', 'turquoise', 'violet', 'wheat', 'white', 
+
+    colors = ['aliceblue', 'antiquewhite', 'aqua', 'aquamarine', 'azure',
+              'beige', 'bisque', 'blanchedalmond', 'blue', 'blueviolet',
+              'burlywood', 'cadetblue', 'chartreuse', 'chocolate', 'coral',
+              'cornflowerblue', 'cornsilk', 'crimson', 'cyan', 'deeppink', 'deepskyblue',
+              'dimgray', 'dimgrey', 'dodgerblue', 'firebrick', 'floralwhite', 'forestgreen',
+              'fuchsia', 'gainsboro', 'ghostwhite', 'gold', 'goldenrod', 'gray', 'grey', 'green',
+              'greenyellow', 'honeydew', 'hotpink', 'indianred', 'ivory', 'khaki', 'lavender',
+              'lavenderblush', 'lawngreen', 'lemonchiffon', 'lightblue', 'lightcoral', 'lightcyan',
+              'lightgoldenrodyellow', 'lightgreen', 'lightgray', 'lightgrey', 'lightpink', 'lightsalmon',
+              'lightseagreen', 'lightskyblue', 'lightslategray', 'lightslategrey', 'lightsteelblue',
+              'lightyellow', 'lime', 'limegreen', 'linen', 'magenta', 'maroon', 'mediumaquamarine', 'mediumblue',
+              'mediumorchid', 'mediumpurple', 'mediumseagreen', 'mediumslateblue', 'mediumspringgreen', 'mediumturquoise',
+              'mediumvioletred', 'mintcream', 'mistyrose', 'moccasin', 'navajowhite', 'oldlace', 'olive', 'olivedrab', 'orange',
+              'orangered', 'orchid', 'palegoldenrod', 'palegreen', 'paleturquoise', 'palevioletred', 'papayawhip', 'peachpuff',
+              'peru', 'pink', 'plum', 'powderblue', 'purple', 'rebeccapurple', 'red', 'rosybrown', 'royalblue', 'saddlebrown',
+              'salmon', 'sandybrown', 'seagreen', 'seashell', 'sienna', 'silver', 'skyblue', 'slateblue', 'slategray', 'slategrey',
+              'snow', 'springgreen', 'steelblue', 'tan', 'teal', 'thistle', 'tomato', 'turquoise', 'violet', 'wheat', 'white',
               'whitesmoke', 'yellow', 'yellowgreen']
     scolors = random.sample(colors, len(colors))
-    
+
     fnt = ImageFont.truetype(os.path.dirname(os.path.realpath(__file__)) + "/FreeMono.ttf", fontsize)
-    
+
     try:
         coco_df = coco2df(coco)
     except:
         coco_df = coco
-    
+
     if 'score' in coco_df.columns:
         coco_df['name'] = coco_df['name'] + ' ' + round(coco_df['score'], 2).astype(str)
-        
+
     if 'is_false_positive' in coco_df.columns:
         coco_df['name'] = coco_df['name'] + ' ' + coco_df['is_false_positive'].astype(str)
-    
+
     resh = lambda x : ((x[0],x[1]), (x[0]+x[2],x[1]+x[3]))
     coco_df['coordinates'] = coco_df['bbox'].apply(resh)
-    
+
     coco_df['color'] = ""
     for c in coco_df.name.unique():
         if len(scolors) == 0:
@@ -116,16 +132,17 @@ def draw_coco_bbox(coco, out_dir, test_dir, prefix='annotated', line_width=10, f
         for row in coco_df[coco_df['file_name'] == img_name][['name','coordinates', 'color']].values:
             draw.rectangle(row[1], outline=row[2], width=line_width)
             draw.text((row[1][0][0], row[1][0][1]+fontYshift), row[0], font=fnt, fill=row[2])
-        
         print(f'Writing {out_dir}/{prefix}_{img_name}')
+
         source_img.save(f'{out_dir}/{prefix}_{img_name}', "JPEG")
 
-        
 def plot_test_results(coco_test_true, coco_test_results):
-    with open(coco_test_true, 'r') as j:
-        ttruth = json.load(j)
-    
-def deduplicate_overlapping_preds(df_pred, IoU_threshold=0.7, area=1000000):
+    """
+
+    """
+    ttruth = get_truthset(coco_test_true)
+
+def deduplicate_overlapping_preds(df_pred, IoU_threshold: float = 0.7, area: int = 1000000):
     dedup_df = pd.DataFrame()
     for image_id in df_pred.image_id.unique():
         sdf_pred = df_pred[df_pred['image_id'] == image_id].copy()
@@ -133,7 +150,7 @@ def deduplicate_overlapping_preds(df_pred, IoU_threshold=0.7, area=1000000):
         df = pd.DataFrame(combinations(sdf_pred['id'], 2), columns=['id_x', 'id_y'])
         df = df.merge(sdf_pred[['id_temp', 'box', 'score', 'name']], how='left', left_on='id_x', right_on='id_temp')\
             .merge(sdf_pred[['id_temp', 'box', 'score', 'name']], how='left', left_on='id_y', right_on='id_temp')
-            
+
         df['intersection'] = df[['box_x', 'box_y']].apply(lambda x: x[0].intersection(x[1]).area, axis=1)
         df['union'] = df[['box_x', 'box_y']].apply(lambda x: x[0].union(x[1]).area, axis=1)
         df['IoU'] = df['intersection'] / df['union']
@@ -141,20 +158,20 @@ def deduplicate_overlapping_preds(df_pred, IoU_threshold=0.7, area=1000000):
         df['drop'] = df['id_y'].where(df['score_x'] > df['score_y'], df['id_x'])
         sdf_pred = sdf_pred[~(sdf_pred['id'].isin(df['drop']))] 
         sdf_pred.drop(labels=['id_temp'], axis=1, inplace=True)
-        
+
         dedup_df = pd.concat([dedup_df, sdf_pred], axis=0)
     dedup_df = dedup_df[dedup_df['area'] < area]
     return dedup_df
 
-def match_true_n_pred_box(df_ttruth, df_pred, IoU_threshold=0.4):
+def match_true_n_pred_box(df_ttruth, df_pred, IoU_threshold: float = 0.4):
     matched = pd.DataFrame()
     df_pred['id_pred'] = df_pred['id']
     df_pred['pred_box'] = df_pred['box']
     df_ttruth['id_true'] = df_ttruth['id']
     df_ttruth['true_box'] = df_ttruth['box']
     df_ttruth['true_area'] = df_ttruth['area']
-    
-    
+
+
     for image_id in df_pred.image_id.unique():
         sdf_pred = df_pred[df_pred['image_id'] == image_id]
         sdf_ttruth = df_ttruth[df_ttruth['image_id'] == image_id]
@@ -168,7 +185,7 @@ def match_true_n_pred_box(df_ttruth, df_pred, IoU_threshold=0.4):
         df['union'] = df[['true_box', 'pred_box']].apply(lambda x: x[0].union(x[1]).area, axis=1)
         df['IoU'] = df['intersection'] / df['union']
         matched = pd.concat([matched, df], axis=0)
-        
+
     df2 = matched[matched['IoU'] > IoU_threshold].sort_values(by='score', ascending = False)
     df2 = df2.drop_duplicates(subset=['id_pred'], keep='first')
     df2 = df2.drop_duplicates(subset=['id_true'], keep='first')
@@ -180,15 +197,15 @@ def match_true_n_pred_box(df_ttruth, df_pred, IoU_threshold=0.4):
 
     pairs['is_correct'] = (pairs['name_x'] == pairs['name_y'])
     pairs['is_correct_class'] = (pairs['name_x'] == pairs['name_y']).where(pairs.id_pred.notnull(), np.nan)
-        
+
     return pairs
 
 def plot_confusion_matrix(cm,
                           target_names,
-                          title='Confusion matrix',
-                          cmap=None,
-                          normalize=True,
-                          write=None):
+                          title: str ='Confusion matrix',
+                          cmap = None,
+                          normalize: bool = True,
+                          write: bool = None):
     """
     given a sklearn confusion matrix (cm), make a nice plot
 
