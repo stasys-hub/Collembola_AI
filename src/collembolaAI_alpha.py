@@ -195,6 +195,7 @@ class collembola_ai:
         cfg.SOLVER.BASE_LR = self.learning_rate
         cfg.SOLVER.MAX_ITER = self.num_iter
         cfg.MODEL.ROI_HEADS.NUM_CLASSES = self.num_classes
+        cfg.MODEL.RETINANET.NUM_CLASSES = self.num_classes
         cfg.nms = True
         cfg.MODEL.DEVICE = self.gpu_num
         # This will start the Trainer -> Runtime depends on hardware and parameters
@@ -217,6 +218,7 @@ class collembola_ai:
         cfg.SOLVER.BASE_LR = self.learning_rate
         cfg.SOLVER.MAX_ITER = self.num_iter
         cfg.MODEL.ROI_HEADS.NUM_CLASSES = self.num_classes
+        cfg.MODEL.RETINANET.NUM_CLASSES = self.num_classes
         cfg.nms = True
         cfg.MODEL.DEVICE = self.gpu_num
 

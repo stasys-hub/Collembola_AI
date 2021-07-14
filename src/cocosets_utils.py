@@ -262,6 +262,7 @@ def plot_confusion_matrix(cm,
     plt.xlabel('Predicted label\naccuracy={:0.4f}; misclass={:0.4f}'.format(accuracy, misclass))
     if write:
         plt.savefig(write)
+        plt.savefig(write.replace(".png", ".svg"), format="svg")
     plt.show()
 
 def getbox(x):
