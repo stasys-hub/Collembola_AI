@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
-# ------------------------------------------------------------------------------ #
-#                                                                                #
-# Title:                                                            CollembolaAI #
-# Authors:                                      Stephan Weißbach & Stanislav Sys #                                                                              
-# Purpose:                                      Object Detection for Collembolas #                                                                              
-# Usage:                                                              See ReadMe #
-# Dependencies:                                                       See ReadMe # 
-# Last Update:                                                        11.01.2021 #
-#                                                                                #
-# ------------------------------------------------------------------------------ #
-
+"""
+Project title:       CollembolAI
+Authors:             Stephan Weißbach, Stanislav Sys, Clément Schneider
+Original repository: https://github.com/stasys-hub/Collembola_AI.git
+Module title:        collembolAI.py
+Purpose:             Object Detection and classification for samples of
+                     soil fauna invertebrates in fluid
+Dependencies:        See ReadMe
+Last Update:         11.01.2021
+Licence:             
+"""
 
 # Imports
 import traceback
@@ -17,8 +17,8 @@ import argparse
 import configparser
 
 from cocosets_utils import testresults2coco, coco2df, draw_coco_bbox, \
-                           plot_test_results, deduplicate_overlapping_preds, \
-                           match_true_n_pred_box, plot_confusion_matrix
+                           deduplicate_overlapping_preds, \
+                           match_true_n_pred_box
 import cv2
 from detectron2.modeling import build_model
 from detectron2 import model_zoo
@@ -35,6 +35,7 @@ import os
 import pandas as pd
 import PIL
 from sklearn.metrics import confusion_matrix
+from third_party_utils import plot_confusion_matrix
 import warnings
 
 PIL.Image.MAX_IMAGE_PIXELS = 500000000

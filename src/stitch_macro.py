@@ -1,4 +1,17 @@
 #!/usr/bin/env python3
+
+"""
+Project title:       CollembolAI
+Authors:             Stephan Weißbach, Stanislav Sys, Clément Schneider
+Original repository: https://github.com/stasys-hub/Collembola_AI.git
+Script title:        stitch_macro
+Script purpose:      Stitching sets of overlapping pictures (in our case, taken with our
+                     hoverMacroCam system).
+Usage:               Please refer to help.
+Dependencies:        See ReadMe
+Last Update:         11.01.2021
+"""
+
 import argparse
 import cv2
 import os
@@ -37,10 +50,9 @@ def stitch(imset, out_folder, out_jpeg_quality=92):
         else:
             print(f'{set_name}: stitcher failed for some reason, with error code {status}. Please refer to opencv2 createStitcher documentation '+
                  'for more details.')
-
-
-if __name__ == "__main__":
-
+            
+def main():
+    
     parser=argparse.ArgumentParser()
 
     parser.add_argument('in_folder', type=str, 
@@ -62,4 +74,7 @@ if __name__ == "__main__":
     else:
         loop_stitch(args.in_folder, args.o, args.q)
 
+
+if __name__ == "__main__":
+    main()
 

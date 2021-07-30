@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
-'''
-voc2coco is a script by y.fujimoto "yukkyo": https://github.com/yukkyo/voc2coco
-'''
+"""
+voc2coco is a script by y.fujimoto "yukkyo": https://github.com/yukkyo/voc2coco.
+We provide it here for user simplicity. Briefly, under licence BSD, your are free to reuse 
+and modify this code. But please also consider contributing to the original repository if you wish
+to modify this code as user of CollembolAI.
+"""
 
 import os
 import argparse

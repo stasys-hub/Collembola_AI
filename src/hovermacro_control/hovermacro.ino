@@ -1,6 +1,15 @@
 
 /*******************************************
- *
+
+Project title:       CollembolAI
+Authors:             Stephan Weißbach, Stanislav Sys, Clément Schneider
+Original repository: https://github.com/stasys-hub/Collembola_AI.git
+Module title:        hoverMacroCam
+.py
+Purpose:             A Script that control to control the hoverMacroCam system (3rd axis possible but not implemented here).
+Sources: the infrared trigger signal information was found thanks to the cameraIrControl Library by Sebastian Setz at https://github.com/dharmapurikar/Arduino/blob/master/libraries/multiCameraIrControl. The library itself was not used because it was found to produce unreliable code
+Licence:             BSD
+
  * Name.......:  hoverMacroCam control script
  * Description:  A script that control to control the hoverMacroCam system (3rd axis possible but not implemented here).
  * Author.....:  Clément Schneider
@@ -8,11 +17,7 @@
  * Date.......:  2021-06-21
  * Project....:  
  * Contact....:  clement.schneider{a}senckenberg.de
- * License....:  This work is licensed under the Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported License.
- *               To view a copy of this license, visit http://creativecommons.org/licenses/by-nc-sa/3.0/ or send a letter to
- *               Creative Commons, 171 Second Street, Suite 300, San Francisco, California, 94105, USA.
- * Dependency.: This script uses the cameraIrControl Library by Sebastian Setz at https://github.com/dharmapurikar/Arduino/blob/master/libraries/multiCameraIrControl
- *              We distribute it here with a tiny fix for user conveniency. 
+              We distribute it here with a tiny fix for user conveniency. 
  *
  ********************************************/
  
