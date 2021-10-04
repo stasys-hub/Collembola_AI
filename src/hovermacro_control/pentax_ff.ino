@@ -5,9 +5,11 @@ Authors:             Stephan Weißbach, Stanislav Sys, Clément Schneider
 Original repository: https://github.com/stasys-hub/Collembola_AI.git
 Module title:        hoverMacroCam
 .py
-Purpose:             An Arduino Sketch that control to control the hoverMacroCam system (3rd axis possible but not implemented here). Currently only support Canon DSLR Camera. Future release will include support for Pentax and Nikon DSLR.
+Purpose:             An Arduino Sketch that control to control the hoverMacroCam system (3rd axis possible but not implemented here). This version is suitable for a Pentax full frame DSLR (tested on a k1 II).
 ******************/
 
+#include "IRremote.h"
+ 
 volatile bool systemState = LOW;
 volatile long switchTime = 0;
 volatile long prevSwitchTime = 0;
@@ -29,6 +31,7 @@ void setup() {
   digitalWrite(YdirPin, HIGH);
   digitalWrite(systemLedPin, systemState);
   attachInterrupt(digitalPinToInterrupt(interruptPin), switchOn, RISING);
+  IrSender.begin(12, false);
 }
 
 void switchOn() {
@@ -39,26 +42,11 @@ void switchOn() {
   }
 }
 
-void wait(unsigned int time){
-  delayMicroseconds(time);
-}
-
-void high(int pinLED, int freq, int time){
-  int pause = (1000/freq/2)-4;
-  
-  for (byte i = 0; i < time; i++) {
-  digitalWrite(pinLED,HIGH);
-  delayMicroseconds(pause);
-  digitalWrite(pinLED,LOW);
-  delayMicroseconds(pause);
-  }
-}
-
 void shotNow()
 {
-  high(12,33,16);
-  wait(7330);
-  high(12,33,16);
+  const uint16_t irSignal[]{ 13000, 3000, 1000, 1000, 1000, 1000, 1000, 1000, 1000,
+  1000, 1000, 1000, 1000, 1000, 1000, 1000 };
+  IrSender.sendRaw(irSignal, sizeof(irSignal) / sizeof(irSignal[0]), 38);
 }
 
 void course(byte stepPin, int pulseFreq, int numSteps) {
@@ -74,24 +62,25 @@ void scanStage() {
   bool Ydir = LOW;
   digitalWrite(YdirPin, Ydir); /* LOW = Y forward */
   digitalWrite(XdirPin, Xdir); /* LOW = X left */
-  for (byte i = 0; i < 10; i++){
+  for (byte i = 0; i < 7; i++){
     if (!systemState) {return;}
-    course(YstepPin, 500., 300);
-    delay(1000);
+    course(YstepPin, 1500, 385);
+    delay(0);
     shotNow();
-    delay(300);
-    for (byte j = 0; j < 7; j++){
+    delay(4500);
+    for (byte j = 0; j < 4; j++){
       if (!systemState) {return;}  
-      course(XstepPin, 5000, 400);
-      delay(1000);
+      course(XstepPin, 1500, 480);
+      delay(0);
       shotNow();
-      delay(300);
+      delay(4500);
       }
     Xdir = !Xdir;
     digitalWrite(XdirPin, Xdir);
     }
+  course(XstepPin, 2000, 1920);
   digitalWrite(YdirPin, !Ydir);
-  course(YstepPin, 5000, 5700);
+  course(YstepPin, 2000, 2695);
 }
 
 void loop() {
