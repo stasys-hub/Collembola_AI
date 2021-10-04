@@ -42,6 +42,7 @@ source activate path/to/env/bin/activate
 pip install torch==1.7.0+cu111 torchvision==0.8.1+cu110 torchaudio===0.7.0 -f https://download.pytorch.org/whl/torch_stable.html
 # install Detectron2 
 python -m pip install detectron2 -f https://dl.fbaipublicfiles.com/detectron2/wheels/cu110/torch1.7/index.html
+```
 
 To use CollembolAI just clone the git Directory into a place of your choice. 
 
@@ -77,77 +78,22 @@ gpu_device_num = 0
 You are all set to train and test a model and then use it on new pictures:
 
 1. describe the training set
-```
+```bash
 python3 collembolAI.py -d template.conf
 ```
 1. training
-```
+```bash
 python3 collembolAI.py -t template.conf
 ```
 2. testing
-```
+```bash
 python3 collembolAI.py -e template.conf
 ```
 3. annotate new pictures
-```
+```bash
 python3 collembolAI.py -a template.conf
 ```
 4. activate all functions:
-```
+```bash
 python3 collembolAI.py -d -t -e -a template.conf
 ```
-
-
-<!--
-```python
-# Please declare your working and output directory for training and test set here. 
-# this is were your "train" and output folder should be
-my_work_dir = "/path/to/working/dir"
-# were things will be stored
-my_output_dir = "/path/to/output/dir"
-
-```
-You can specify Model parameters and use the model using the following syntax:
-```python
-# Start model with default params  and  a learning rate of 0.00001
- My_Model = collembola_ai(my_work_dir, my_output_dir, learning_rate=0.00001)
- 
- # this will print the current model configuration
- My_Model.print_model_values()
- 
- # register the training and My_Model.sets in detectron2
- My_Model.load_train_test()
- 
- # start training 
- My_Model.start_training()
- 
- # start evaluation on My_Model.set
- My_Model.start_evaluation_on_test()
- 
- # run inference on a specified dataset
- # specifiy image type 
- my_type = "jpg"
- # path to outout for annotated images 
- my_output_inference = "/path/to/..."
- My_Model.perfom_inference_on_folder(imgpath, my_output_inference, my_type)
-```
-Currently supported parameters and their defaults are:
-  1. workingdir: path to working directory (str) - required
-  2. outputdir : path to output directory (str) - required
-  3. n_iterations: Number of iterations to train (int = 8000)
-  4. work_num: Number of workes (int = 2)
-  5. my_batch_size: Batch size used for training (int = 5) Should work with any Nvidia GPU >= 8GB VRAM
-  6. learning_rate: The models learning rate (float = 0.00025)
-  7. number_classes: number of classes defined in the training data set (int = 10) - adjust to number of labeled species you have!
-  8. treshhold: Treshhold for Detection in evaluation (float = 0.55)
-  
-Please read the prequisites in the script header. They contain information on how to structure the your directory tree. 
-Please don't forget that you can either perform inference with an already trained model (shipped with CollembolaAI) or you can choose to retrain it on your data as well as start from scratch and train a new model. If you want to train/retrain your model you will need a data-set labeled in COCO Format.
-
-### TODOs:
-Split the script and mnake it modular
-
-
-
-Since we don't use segemntation and only want bounding boxes the easiest way to annotate your data is to use [labelimg](https://pypi.org/project/labelImg/) and convert the data to COCO format with a short python script. 
--->
