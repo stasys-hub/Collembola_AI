@@ -1,6 +1,6 @@
 ![Screenshot](CAI_git.png)
 ## Welcome to Collembola_AI
-in this project we retrained the popular [Faster R-CNN](https://arxiv.org/pdf/1506.01497.pdf) Convolutional Neural Network using Facebooks [Detectron2](https://github.com/facebookresearch/detectron2) Framework to detect and classify species in a mock community of soil mesofauna preserved in ethanol. The community is made of 10 Collembola species and 2 Acari species, and were acquired using our homemade macrophotography workflow "hoverMacroCam" (described in Sys et al (submitted) contact us for details in the mean time).
+in this project we retrained the popular [Faster R-CNN](https://arxiv.org/pdf/1506.01497.pdf) Convolutional Neural Network using Facebooks [Detectron2](https://github.com/facebookresearch/detectron2) Framework to detect and classify species in a mock community of soil mesofauna preserved in ethanol. The community is made of 10 Collembola species and 2 Acari species, and were acquired using our homemade macrophotography workflow "HoverMacroCam" (described in Sys et al (submitted), arduino control scripts provided here, contact us for details in the mean time).
 
 1. Sinella curviseta
 2. Lepidocyrtus lignorum
@@ -97,3 +97,6 @@ python3 collembolAI.py -a template.conf
 ```bash
 python3 collembolAI.py -d -t -e -a template.conf
 ```
+
+### HoverMacroCam
+You reproduced our macrophography system ? Great, you can find some arduino scripts in the "hovermacro_control" folder of the repo. canon_apsc.ino was suitable for using with a Canon EOS 7D DSLR. pentax_ff.ino is our running version using a Pentax k1 II DSLR. The program has to be adapted if using a new brand or a different sensor size / resolution. Get in touch if you need help.
