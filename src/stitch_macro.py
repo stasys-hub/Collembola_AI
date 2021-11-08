@@ -16,8 +16,9 @@ import argparse
 import cv2
 import os
 import re
+import shutil
 
-def loop_stitch(in_folder, out_folder, out_jpeg_quality=92):    
+def loop_stitch(in_folder, out_folder, out_jpeg_quality=92):   
     imset_folders = next(os.walk(f'{in_folder}'))[1]
     print(f'Found {len(imset_folders)} subfolders in the input folder. Will try to find and stitch pictures' +
          ' in each of those.')
@@ -47,7 +48,8 @@ def stitch(imset, out_folder, out_jpeg_quality=92):
             print(f'{set_name}: stitcher report SUCCESS (= at least 2 pictures could be stitched)')
             print(f'{set_name}: writing result to {out_file}')
             cv2.imwrite(out_file, newseed, [int(cv2.IMWRITE_JPEG_QUALITY), out_jpeg_quality])
-            
+            shutil.move(imset, f'{out_folder.rstrip("/")}/{set_name}')
+
         else:
             print(f'{set_name}: stitcher failed for some reason, with error code {status}. Please refer to opencv2 createStitcher documentation '+
                  'for more details.')
