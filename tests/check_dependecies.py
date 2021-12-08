@@ -7,6 +7,7 @@
 #                                                                                #
 # ------------------------------------------------------------------------------ #
 
+from termcolor import colored
 import importlib
 import subprocess
 import sys
@@ -25,7 +26,7 @@ deps = ["torch", "detectron2", "torchvision", "opencv-python"]
 # check if deps are installed and loadable
 for dependency in deps:
     if (dependency in installed_packages):
-        print(f'{dependency}:\t is installed')
+        print(colored(f'{dependency}:\t is installed', 'green'))
         try:
             if(dependency =="opencv-python"):
                 importlib.import_module("cv2")
@@ -33,7 +34,7 @@ for dependency in deps:
                 importlib.import_module(dependency)
 
         except ModuleNotFoundError:
-            print(f'ERROR: Can\'t import module: {dependency}!' )
+            print(colored(f'ERROR: Can\'t import module: {dependency}!', "green") )
             pass
 
     else:
