@@ -24,7 +24,7 @@ We wrote the code on a machine running Ubuntu 20.04 LTS, but any Linux environme
 
 ### Dependencies
 
-1. Python 3 (a few packages found in [requirements.txt](src/requirements.txt)
+1. Python 3 (a few packages found in [requirements.txt](src/requirements.txt))
 2. Detectron 2 - since we use the Detectron2 API we have the same Dependecies. Please refer to their [Documentation](https://detectron2.readthedocs.io/tutorials/install.html#requirements). 
 3. CUDA enabled Nvidia GPU -> checkout the [compatibility list ](https://detectron2.readthedocs.io/en/latest/tutorials/install.html#install-pre-built-detectron2-linux-only) of detectron and CUDA (We ran it on a RTX 2060 Super, Nvidia Titan X and V100)
 
@@ -71,7 +71,7 @@ The Script collembolAI.py shipped with CollembolAI is the heart of the pipeline.
 7. If you want to run your model on new, unannotated pictures, drop them in a new folder and indicate this folder name in the configuration file using 'inference_directory' (e.g. /home/clem/myproject/new_pictures_to_classify)
 8. For the other optional configuration variable, please check Detectron2 documentation
 
-```toml
+```
 [DEFAULT]
 project_directory = /home/clem/myproject
 model_name = mymodel_using_faster_rcnn_R50_FPN
