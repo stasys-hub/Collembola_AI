@@ -21,7 +21,7 @@ from PIL import Image, ImageDraw, ImageEnhance, ImageFont
 from shapely.geometry import box
 
 
-def testresults2coco(test_dir, inference_dir, write=False):
+def testresults2coco(test_dir: str, inference_dir: str, write=False):
     '''
     Returns a full Coco instance from the test results annotations file (json outputed by Detectron 2)
     It will use the test COCO annotation file to fetch missing informations. If write parameter is set to True, 
@@ -57,7 +57,7 @@ def getbox(x):
     x: COCO bbox coordinates (list of 4 elements)'''
     return box(x[0],x[1],x[0]+x[2],x[1]+x[3])
 
-def coco2df(coco):
+def coco2df(coco) -> pd.DataFrame:
     '''
     Fit a coco instance into a flat pandas DataFrame. Likely overkill to bring in pandas for this,
     but considerably simply operations from my own perspective =).
@@ -76,7 +76,7 @@ def coco2df(coco):
 
     return coco_df
 
-def draw_coco_bbox(coco, out_dir, coco_dir, prefix='annotated', line_width=10, fontsize = 80, fontYshift = -50):
+def draw_coco_bbox(coco, out_dir: str, coco_dir: str, prefix: str='annotated', line_width: int=10, fontsize: int = 80, fontYshift: int = -50) -> None:
     '''
     Detectron2 module for writing annotated pictures was not so explicit to me, and default output not so pretty.
     This function will draw the annotation on the pictures of a coco dataset. The dataset can be provided as a coco instance,
@@ -143,7 +143,7 @@ def draw_coco_bbox(coco, out_dir, coco_dir, prefix='annotated', line_width=10, f
         source_img.save(f'{out_dir}/{prefix}_{img_name}', "JPEG")
 
            
-def deduplicate_overlapping_preds(df_pred, IoU_threshold=0.7, area=1000000):
+def deduplicate_overlapping_preds(df_pred, IoU_threshold: float=0.7, area: int=1000000) -> pd.DataFrame:
     dedup_df = pd.DataFrame()
     for image_id in df_pred.image_id.unique():
         sdf_pred = df_pred[df_pred['image_id'] == image_id].copy()
@@ -164,7 +164,8 @@ def deduplicate_overlapping_preds(df_pred, IoU_threshold=0.7, area=1000000):
     dedup_df = dedup_df[dedup_df['area'] < area]
     return dedup_df
 
-def match_true_n_pred_box(df_ttruth, df_pred, IoU_threshold=0.4):
+# TODO Find out type 
+def match_true_n_pred_box(df_ttruth: pd.DataFrame, df_pred: pd.DataFrame, IoU_threshold: float = 0.4) -> pd.DataFrame:
     matched = pd.DataFrame()
     df_pred['id_pred'] = df_pred['id']
     df_pred['pred_box'] = df_pred['box']

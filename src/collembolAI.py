@@ -114,7 +114,7 @@ class collembola_ai:
         self.gpu_num = int(gpu_num)
         self.trainer = None        
 
-    def print_model_values(self):
+    def print_model_values(self) -> None:
         """This function will print all model parameters which can be set by the user. It is useful if you have path problems.
         Hint: On Windows you will probably have to adjust your path because of backslashes"""
 
@@ -133,7 +133,7 @@ class collembola_ai:
         print("\n# ------------------------------------------------- #")
 
 
-    def load_train_test(self):
+    def load_train_test(self) -> None:
         """This function loads the train.json file and registers your training data using the \"register_coco_instances\" function of Detectron2
         IMPORTANT: Currently it is necessary to use this function before performing inference with a trained model """
 
@@ -153,7 +153,7 @@ class collembola_ai:
         except:
             print("ERROR!\nUnable to load model configurations!\nPlease check your input and use \"print_model_values\" for debugging ")
         
-    def describe_train_test(self):
+    def describe_train_test(self) -> None:
             print('Outputing some infos about the train and test dataset')
             with open(os.path.join(self.test_directory, "test.json"), 'r') as j:
                 ttruth =  json.load(j)
@@ -182,7 +182,7 @@ class collembola_ai:
             print(species_stats['avg_area'].to_markdown())
             species_stats['avg_area'].to_csv(os.path.join(self.project_directory, "species_avg_individual_area.tsv"), sep='\t')
 
-    def start_training(self):
+    def start_training(self) -> None:
         '''This function will configure Detectron with your input Parameters and start the Training.
         HINT: If you want to check your Parameters before training use "print_model_values"'''
 
@@ -208,7 +208,7 @@ class collembola_ai:
         trainer.train()
         print("\n---------------Finished Training---------------")
 
-    def start_evaluation_on_test(self):
+    def start_evaluation_on_test(self) -> None:
         """This function will start the testing the model on test_set1 and test_set2"""
 
         # reload the model
@@ -355,7 +355,7 @@ class collembola_ai:
 
         print("\n---------------Finished Evaluation---------------")
 
-    def perfom_inference_on_folder(self, imgtype = "jpg"):
+    def perfom_inference_on_folder(self, imgtype: str = "jpg") -> None:
         '''This function can be used to test a trained model with a set of images or to perform inference on data you want to classify.
         IMPORTANT: You still have to load a model using "load_train_test"'''
         try:

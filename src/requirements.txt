@@ -1,0 +1,9 @@
+opencv-python
+sklearn
+pandas
+numpy
+funcy
+matplotlib
+Pillow
+Shapely
+termcolor
