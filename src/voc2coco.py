@@ -6,13 +6,14 @@ and modify this code. But please also consider contributing to the original repo
 to modify this code as user of CollembolAI.
 """
 
-import os
 import argparse
 import json
+import os
+import re
 import xml.etree.ElementTree as ET
 from typing import Dict, List
+
 from tqdm import tqdm
-import re
 
 
 def get_label2id(labels_path: str) -> Dict[str, int]:

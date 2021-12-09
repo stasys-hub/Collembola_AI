@@ -53,9 +53,10 @@ def plot_confusion_matrix(cm,
                           write        = None
     """
     
+    import itertools
+
     import matplotlib.pyplot as plt
     import numpy as np
-    import itertools
 
     accuracy = np.trace(cm) / float(np.sum(cm))
     misclass = 1 - accuracy

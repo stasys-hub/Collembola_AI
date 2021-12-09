@@ -12,11 +12,12 @@ Last Update:
 Licence:             
 """
 
-import json
-from pathlib import Path
-import shutil
-import os
 import argparse
+import json
+import os
+import shutil
+from pathlib import Path
+
 
 def main():
     parser=argparse.ArgumentParser()

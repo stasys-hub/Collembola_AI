@@ -13,13 +13,15 @@ Last Update:         11.01.2021
 
 # Imports
 import argparse
-from cocosets_utils import coco2df
 import json
 import os
+
 import matplotlib.pyplot as plt
 import pandas as pd
 import PIL
 from PIL import Image
+
+from cocosets_utils import coco2df
 
 PIL.Image.MAX_IMAGE_PIXELS = 500000000
 

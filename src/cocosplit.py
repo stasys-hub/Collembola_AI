@@ -5,8 +5,9 @@ version date: Sep 6, 2019
 comment : a simple tool to split coco annotations (json) into train and test sets. Clem: no need to reinvent the wheel, 
 '''
 
-import json
 import argparse
+import json
+
 import funcy
 from sklearn.model_selection import train_test_split
 

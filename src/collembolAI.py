@@ -11,32 +11,34 @@ Last Update:         11.01.2021
 Licence:             
 """
 
-# Imports
-import traceback
 import argparse
 import configparser
-
-from cocosets_utils import testresults2coco, coco2df, draw_coco_bbox, \
-                           deduplicate_overlapping_preds, \
-                           match_true_n_pred_box
-import cv2
-from detectron2.modeling import build_model
-from detectron2 import model_zoo
-from detectron2.data import DatasetCatalog, MetadataCatalog, build_detection_test_loader
-from detectron2.utils.visualizer import Visualizer, ColorMode
-from detectron2.engine import DefaultTrainer, DefaultPredictor
-from detectron2.config import get_cfg
-from detectron2.data.datasets import register_coco_instances
-from detectron2.evaluation import COCOEvaluator, inference_on_dataset
-from detectron2.structures import BoxMode
 import json
-import numpy as np
 import os
+# Imports
+import traceback
+import warnings
+
+import cv2
+import numpy as np
 import pandas as pd
 import PIL
+from detectron2 import model_zoo
+from detectron2.config import get_cfg
+from detectron2.data import (DatasetCatalog, MetadataCatalog,
+                             build_detection_test_loader)
+from detectron2.data.datasets import register_coco_instances
+from detectron2.engine import DefaultPredictor, DefaultTrainer
+from detectron2.evaluation import COCOEvaluator, inference_on_dataset
+from detectron2.modeling import build_model
+from detectron2.structures import BoxMode
+from detectron2.utils.visualizer import ColorMode, Visualizer
 from sklearn.metrics import confusion_matrix
+
+from cocosets_utils import (coco2df, deduplicate_overlapping_preds,
+                            draw_coco_bbox, match_true_n_pred_box,
+                            testresults2coco)
 from third_party_utils import plot_confusion_matrix
-import warnings
 
 PIL.Image.MAX_IMAGE_PIXELS = 500000000
 

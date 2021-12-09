@@ -12,9 +12,10 @@ Last Update:
 Licence:             
 """
 
+import argparse
 import json
 import ntpath
-import argparse
+
 
 def numerize_id(coco):
     # make mapper and remap images

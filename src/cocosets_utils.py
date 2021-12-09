@@ -10,14 +10,16 @@ Dependencies:        See ReadMe
 Last Update:         11.01.2021
 """
 
-from itertools import combinations, product
 import json
-import numpy as np
 import os
-import pandas as pd
-from PIL import Image, ImageFont, ImageDraw, ImageEnhance
-from shapely.geometry import box
 import random
+from itertools import combinations, product
+
+import numpy as np
+import pandas as pd
+from PIL import Image, ImageDraw, ImageEnhance, ImageFont
+from shapely.geometry import box
+
 
 def testresults2coco(test_dir, inference_dir, write=False):
     '''

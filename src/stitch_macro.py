@@ -13,10 +13,12 @@ Last Update:         11.01.2021
 """
 
 import argparse
-import cv2
 import os
 import re
 import shutil
+
+import cv2
+
 
 def loop_stitch(in_folder, out_folder, out_jpeg_quality=92):   
     imset_folders = next(os.walk(f'{in_folder}'))[1]
