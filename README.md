@@ -67,7 +67,7 @@ The Script collembolAI.py shipped with CollembolAI is the heart of the pipeline.
 3. Split the COCO labels accordingly (/home/clem/myproject/train/train.json and /home/clem/myproject/test/test.json)
 4. Create a new template (simple text file) to set up the retraining of a model and give it a name. You can reuse and adapt the template provided with CollembolAI [template.conf](src/template.conf).
 5. In the template, make sure to indicate the path to you project folder, and give a name to your model
-6. The template default to the faster rcnn R50 FPN 3x model, that should work on most modern laptop equipped with a good NVIDIA GPU). To select another base model provided by Detectron2, please check the [model zoo](https://github.com/facebookresearch/detectron2/blob/main/MODEL_ZOO.md) and change "model_zoo_config" in the configuration file accordingly. The  Faster RCNN models should work, provided your hardware can follow.
+6. The template default to the faster rcnn R50 FPN 3x model, that should work on most modern laptop equipped with a good NVIDIA GPU ~ 8GB VRAM). To select another base model provided by Detectron2, please check the [model zoo](https://github.com/facebookresearch/detectron2/blob/main/MODEL_ZOO.md) and change "model_zoo_config" in the configuration file accordingly. The  Faster RCNN models should work, provided your hardware can follow.
 7. If you want to run your model on new, unannotated pictures, drop them in a new folder and indicate this folder name in the configuration file using 'inference_directory' (e.g. /home/clem/myproject/new_pictures_to_classify)
 8. For the other optional configuration variable, please check Detectron2 documentation
 
