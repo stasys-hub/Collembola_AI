@@ -45,7 +45,7 @@ def main():
         
     df = coco2df(r)
 
-    new_json = json_file + '.reviewed'
+    new_json = args.coco_file + '.reviewed'
     try:
         with open(new_json, 'r') as j:
             nr = json.load(j)
@@ -63,7 +63,7 @@ def main():
     df = df[~df['id'].isin(done_ids)]
 
     for file in df.file_name.unique():
-        im = Image.open(os.path.dirname(json_file) + '/' + file)
+        im = Image.open(os.path.dirname(args.coco_file) + '/' + file)
         for raw in df[df['file_name'] == file][['box', 'id', 'area', 'bbox', 'image_id']].values:
             plt.imshow(im.crop(raw[0].bounds))
             plt.show(block=False)

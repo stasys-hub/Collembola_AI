@@ -16,8 +16,8 @@ import json
 import ntpath
 import argparse
 
-def numerize_id(coco):
-    # make mapper and remap images
+def numerize_img_id(coco):
+    # replace string image ids by integer ids
     new_id = 0
     id_mapper = dict()
     for i in coco['images']:
@@ -28,7 +28,26 @@ def numerize_id(coco):
     # remap annotation
     for a in coco['annotations']:
         a['image_id'] = id_mapper[a['image_id']]
-        
+
+def numerize_annot_id(coco):
+    # reset annotation ids by integer ids and enforce numerical value on categories id, but only if numerical character
+    new_id = 1
+    for i in coco['annotations']:
+        i['id'] = new_id
+        try:
+            i['category_id'] = int(i['category_id'])
+        except:
+            pass
+        new_id += 1
+
+def numerize_cat_id(coco):
+    # enforce numerical value on categories id, but only if numerical character
+    for i in coco['annotations']:
+        try:
+            i['id'] = int(i['id'])
+        except:
+            pass
+
 def trim_path_from_file_name(coco):
     for i in coco['images']:
         i['file_name'] = ntpath.basename(i['file_name'])
@@ -55,7 +74,9 @@ def main():
     with open(args.coco_json, 'r') as j:
         coco = json.load(j)
    
-    numerize_id(coco)
+    numerize_img_id(coco)
+    numerize_annot_id(coco)
+    numerize_cat_id(coco)
     trim_path_from_file_name(coco)
     add_standard_field(coco)
     
