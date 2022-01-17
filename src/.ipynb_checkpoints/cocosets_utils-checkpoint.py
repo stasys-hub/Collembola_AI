@@ -62,9 +62,9 @@ def coco2df(coco):
     '''
     classes_df = pd.DataFrame(coco['categories'])
     classes_df.name = classes_df.name.str.strip()
-    classes_df.columns = ['supercategory','category_id','name']
+    classes_df.rename(columns={"id": "category_id"}, inplace=True)
     images_df = pd.DataFrame(coco['images'])
-    images_df.columns = ['file_name','height','width','image_id']
+    images_df.rename(columns={"id": "image_id"}, inplace=True)
     coco_df = pd.DataFrame(coco['annotations'])\
                     .merge(classes_df, on="category_id", how='left')\
                     .merge(images_df, on="image_id", how='left')
@@ -125,7 +125,7 @@ def draw_coco_bbox(coco, out_dir, coco_dir, prefix='annotated', line_width=10, f
             scolors = random.sample(colors, len(colors))
         color = scolors.pop()
         coco_df['color'] = coco_df['color'].where(~(coco_df['name'] == c), color)
-
+        
     for img_name in coco_df.file_name.unique():
 
         if len(scolors) == 0:

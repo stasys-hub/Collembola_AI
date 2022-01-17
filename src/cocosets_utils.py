@@ -125,7 +125,7 @@ def draw_coco_bbox(coco, out_dir, coco_dir, prefix='annotated', line_width=10, f
             scolors = random.sample(colors, len(colors))
         color = scolors.pop()
         coco_df['color'] = coco_df['color'].where(~(coco_df['name'] == c), color)
-
+        
     for img_name in coco_df.file_name.unique():
 
         if len(scolors) == 0:

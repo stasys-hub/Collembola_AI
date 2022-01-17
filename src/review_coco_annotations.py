@@ -46,11 +46,13 @@ def main():
     df = coco2df(r)
 
     new_json = args.coco_file + '.reviewed'
+    print('Trying to open a previously saved file:  {}'.format(new_json))
     try:
         with open(new_json, 'r') as j:
             nr = json.load(j)
             n_df = coco2df(nr)
-    except:
+    except Exception as e:
+        print(e)
         nr = r
         nr['annotations'] = []
         n_df = pd.DataFrame()
@@ -68,6 +70,10 @@ def main():
             plt.imshow(im.crop(raw[0].bounds))
             plt.show(block=False)
             inp = input("annotation")
+            try:
+                inp = int(inp)
+            except:
+                pass
             nr['annotations'].append(            
                         {'area': raw[2],
                          'iscrowd': 0,

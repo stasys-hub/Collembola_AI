@@ -45,12 +45,14 @@ def main():
         
     df = coco2df(r)
 
-    new_json = json_file + '.reviewed'
+    new_json = args.coco_file + '.reviewed'
+    print('Trying to open a previously saved file:  {}'.format(new_json))
     try:
         with open(new_json, 'r') as j:
             nr = json.load(j)
             n_df = coco2df(nr)
-    except:
+    except Exception as e:
+        print(e)
         nr = r
         nr['annotations'] = []
         n_df = pd.DataFrame()
@@ -63,11 +65,15 @@ def main():
     df = df[~df['id'].isin(done_ids)]
 
     for file in df.file_name.unique():
-        im = Image.open(os.path.dirname(json_file) + '/' + file)
+        im = Image.open(os.path.dirname(args.coco_file) + '/' + file)
         for raw in df[df['file_name'] == file][['box', 'id', 'area', 'bbox', 'image_id']].values:
             plt.imshow(im.crop(raw[0].bounds))
             plt.show(block=False)
             inp = input("annotation")
+            try:
+                inp = int(inp)
+            except:
+                pass
             nr['annotations'].append(            
                         {'area': raw[2],
                          'iscrowd': 0,
