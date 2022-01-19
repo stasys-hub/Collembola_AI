@@ -13,6 +13,7 @@ Last Update:         11.01.2021
 from itertools import combinations, product
 import json
 import numpy as np
+import ntpath
 import os
 import pandas as pd
 from PIL import Image, ImageFont, ImageDraw, ImageEnhance
@@ -198,3 +199,78 @@ def match_true_n_pred_box(df_ttruth, df_pred, IoU_threshold=0.4):
     pairs['is_correct_class'] = (pairs['name_x'] == pairs['name_y']).where(pairs.id_pred.notnull(), np.nan)
         
     return pairs
+
+def numerize_img_id(coco):
+    '''
+    Input: coco instance (dict)
+    coco instance is modified in-place
+    '''
+    # replace string image ids by integer ids
+    new_id = 0
+    id_mapper = dict()
+    for i in coco['images']:
+        id_mapper[i['id']] = new_id
+        i['id'] = new_id
+        new_id += 1
+        
+    # remap annotation
+    for a in coco['annotations']:
+        a['image_id'] = id_mapper[a['image_id']]
+
+def numerize_annot_id(coco):
+    '''
+    Input: coco instance (dict)
+    coco instance is modified in-place
+    '''
+    # reset annotation ids by integer ids and enforce numerical value on categories id, but only if numerical character
+    new_id = 1
+    for i in coco['annotations']:
+        i['id'] = new_id
+        try:
+            i['category_id'] = int(i['category_id'])
+        except:
+            pass
+        new_id += 1
+
+def numerize_cat_id(coco):
+    '''
+    Input: coco instance (dict)
+    coco instance is modified in-place
+    '''
+    # enforce numerical value on categories id, but only if numerical character
+    for i in coco['annotations']:
+        try:
+            i['id'] = int(i['id'])
+        except:
+            pass
+
+def trim_path_from_file_name(coco):
+    '''
+    Input: coco instance (dict)
+    coco instance is modified in-place
+    '''
+    for i in coco['images']:
+        i['file_name'] = ntpath.basename(i['file_name'])
+        
+def add_standard_field(coco):
+    '''
+    Input: coco instance (dict)
+    coco instance is modified in-place
+    '''
+    try: 
+        coco['licenses']
+    except:
+        coco['licenses'] = ''
+    try: 
+        coco['info']
+    except:
+        coco['info'] = ''
+        
+        
+def drop_category(coco, cat_id):
+    '''
+    Input: coco instance (dict) and categorie_id (integer)
+    coco instance is modified in-place
+    ''' 
+    coco['annotations'] = [i for i in coco['annotations'] if i['category_id'] != cat_id]
+    coco['categories'] = [i for i in coco['categories'] if i['id'] != cat_id]

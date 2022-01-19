@@ -52,24 +52,25 @@ def main():
             nr = json.load(j)
             n_df = coco2df(nr)
     except Exception as e:
-        print(e)
         nr = r
         nr['annotations'] = []
         n_df = pd.DataFrame()
         
     try:
-        done_ids = n_df['id'].values()
+        done_ids = n_df['id'].values
     except:
         done_ids = []
+
     
     df = df[~df['id'].isin(done_ids)]
 
+
     for file in df.file_name.unique():
-        im = Image.open(os.path.dirname(args.coco_file) + '/' + file)
+        im = Image.open(os.path.join(os.path.dirname(args.coco_file), file))
         for raw in df[df['file_name'] == file][['box', 'id', 'area', 'bbox', 'image_id']].values:
             plt.imshow(im.crop(raw[0].bounds))
             plt.show(block=False)
-            inp = input("annotation")
+            inp = input("annotation ID (should be integer): ")
             try:
                 inp = int(inp)
             except:
@@ -85,7 +86,7 @@ def main():
                          'id': raw[1]})
             plt.close() # will make the plot window empty
             with open(new_json, 'w') as j:
-                json.dump(nr, j)
+                json.dump(nr, j, indent=4)
         im.close()
 
 
