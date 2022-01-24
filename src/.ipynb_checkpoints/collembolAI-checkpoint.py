@@ -54,7 +54,7 @@ PIL.Image.MAX_IMAGE_PIXELS = 500000000
 #     |   |-[...]
 #     |   |-train.json
 #     |
-#     |-test_set ................ contains the testing set of pictures, with annotation in COCO format (test.json)
+#     |-test ................ contains the testing set of pictures, with annotation in COCO format (test.json)
 #     |   |-img1.jpg
 #     |   |-img2.jpg
 #     |   |-[...]

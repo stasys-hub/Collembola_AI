@@ -63,14 +63,18 @@ def main():
 
     
     df = df[~df['id'].isin(done_ids)]
+    
+    remaining_num = df.shape[0]
+    print ('Still {} annotations to check :)'.format(remaining_num))
 
 
     for file in df.file_name.unique():
         im = Image.open(os.path.join(os.path.dirname(args.coco_file), file))
         for raw in df[df['file_name'] == file][['box', 'id', 'area', 'bbox', 'image_id']].values:
+            remaining_num = remaining_num - 1
             plt.imshow(im.crop(raw[0].bounds))
             plt.show(block=False)
-            inp = input("annotation ID (should be integer): ")
+            inp = input("annotation ID (should be integer, {} remains): ".format(remaining_num))
             try:
                 inp = int(inp)
             except:

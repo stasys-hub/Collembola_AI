@@ -115,7 +115,7 @@ def draw_coco_bbox(coco, out_dir, coco_dir, prefix='annotated', line_width=10, f
         coco_df['name'] = coco_df['name'] + ' ' + round(coco_df['score'], 2).astype(str)
         
     if 'is_false_positive' in coco_df.columns:
-        coco_df['name'] = coco_df['name'] + ' ' + coco_df['is_false_positive'].astype(str)
+        coco_df['name'] = coco_df['name'] + ' ' + ~coco_df['is_false_positive'].astype(str) + ' detection'
     
     resh = lambda x : ((x[0],x[1]), (x[0]+x[2],x[1]+x[3]))
     coco_df['coordinates'] = coco_df['bbox'].apply(resh)
@@ -274,3 +274,35 @@ def drop_category(coco, cat_id):
     ''' 
     coco['annotations'] = [i for i in coco['annotations'] if i['category_id'] != cat_id]
     coco['categories'] = [i for i in coco['categories'] if i['id'] != cat_id]
+
+    
+def mergecocos(coco1_i, coco2_i):
+    '''
+    Input: two coco instances (dict). Return merged coco instance.
+    ''' 
+    coco1 = coco1_i.copy()
+    coco2 = coco2_i.copy()
+    #make image_id unique
+    for i in coco1['images']:
+        i['id'] = 'coco1_'+str(i['id'])
+    for i in coco1['annotations']:
+        i['image_id'] = 'coco1_'+str(i['image_id'])
+        
+    for i in coco2['images']:
+        i['id'] = 'coco2_'+str(i['id'])
+    for i in coco2['annotations']:
+        i['image_id'] = 'coco2_'+str(i['image_id'])
+
+    cocomerged = coco1.copy()
+    cocomerged['images'] = coco1['images'] + coco2['images']
+    cocomerged['annotations'] = coco1['annotations'] + coco2['annotations']
+    cocomerged['categories'] = cocomerged['categories']
+
+    a_id = 1
+    for i in cocomerged['annotations']:
+        i['id'] = a_id
+        a_id += 1
+
+    numerize_img_id(cocomerged)
+    
+    return cocomerged
