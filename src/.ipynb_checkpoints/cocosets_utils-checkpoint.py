@@ -115,7 +115,7 @@ def draw_coco_bbox(coco, out_dir, coco_dir, prefix='annotated', line_width=10, f
         coco_df['name'] = coco_df['name'] + ' ' + round(coco_df['score'], 2).astype(str)
         
     if 'is_false_positive' in coco_df.columns:
-        coco_df['name'] = coco_df['name'] + ' ' + coco_df['is_false_positive'].astype(str)
+        coco_df['name'] = coco_df['name'] + ' ' + ~coco_df['is_false_positive'].astype(str) + ' detection'
     
     resh = lambda x : ((x[0],x[1]), (x[0]+x[2],x[1]+x[3]))
     coco_df['coordinates'] = coco_df['bbox'].apply(resh)

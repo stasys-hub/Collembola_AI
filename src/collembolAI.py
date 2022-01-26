@@ -285,7 +285,8 @@ class collembola_ai:
         #output_testset2 = os.path.join(self.output_directory, "testset2")
         #os.makedirs(output_testset2, exist_ok=True)
         print('Report on evaluation')
-
+        
+        print('\n\nLoading predicted labels from "coco_instances_results.json", ,)
         tpred = testresults2coco(self.test_directory, self.output_directory, write=True)
 
         print('\n\nLoading predictions and deduplicating overlaping predictions')
@@ -316,17 +317,29 @@ class collembola_ai:
         print(self.output_directory)
         tt_abundances.to_csv(os.path.join(self.output_directory, "test_results/species_abundance_n_area.tsv"), sep='\t')
         pairs = match_true_n_pred_box(df_ttruth, df_pred, IoU_threshold=0.4)
-        perc_detected_animals = 100 - (pairs.id_pred.isnull().sum() / pairs.id_true.notnull().sum() * 100)
+              
+              
+        total_true_labels = pairs.id_true.notnull().sum()
+        true_labels_without_matching_preds = pairs.id_pred.isnull().sum()
+        perc_detected_animals = 100 - (true_labels_without_matching_preds / total_true_labels * 100)
         perc_correct_class = pairs['is_correct_class'].sum() / pairs.dropna().shape[0] * 100
 
-        print(f'\n\n')
-        print(f'{round(perc_detected_animals, 1)}% of animals where detected')
-        print(f'{round(pairs["name_x"].isnull().sum() / pairs.id_true.notnull().sum() * 100, 2)}% of predicted labels are false positive')
-        print(f'{round(perc_correct_class, 1)}% of detected animals where assigned the correct label')
+        #print(f'\n')
+        print(f'The test set represents a total of {total_true_labels} specimens.')
+        print(f'The model produced {len(tpred["annotations"])} prediction, of which {df_pred.shape[0]} remains after deduplication' +
+               ' and removal of oversized bounding boxes.')
+        print(f'{total_true_labels - true_labels_without_matching_preds} ({round(perc_detected_animals, 1)}% of the total) ' + 
+               'of the actual specimens were correcly detected.' +
+               f' Of those detected specimens, {int(pairs["is_correct_class"].sum())} (= {round(perc_correct_class, 1)}%) where assigned to the correct species.')
 
+        # Tagging False positive on df_pred
         df_pred = df_pred.merge(pairs[['id_pred', 'id_true']], how='left', on='id_pred')
         df_pred['is_false_positive'] = True
         df_pred['is_false_positive'] = df_pred['is_false_positive'].where(df_pred['id_true'].isnull(), False)
+
+        print(f'Of the predicted labels, {df_pred["is_false_positive"].sum()} '+
+        f'(={round(df_pred["is_false_positive"].sum() / df_pred.shape[0] * 100,1)}%) '+
+         'where false positive (background, not related to a real specimen)')
 
         print('\n\nDrawing the predicted annotations of the test pictures to support visual verification')
         print('Do not use for testing or for training ! =)')
@@ -391,7 +404,7 @@ class collembola_ai:
         print("\n# ------------------------------------------------- #\n")
 
         try:
-            # I added this beacause Detectron2 uses an deprecated overload -> throws warning
+            # I added this because Detectron2 uses an deprecated overload -> throws warning
             with warnings.catch_warnings():
                 warnings.simplefilter('ignore')
                 os.makedirs(inference_out, exist_ok=True)
