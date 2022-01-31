@@ -7,7 +7,7 @@ Module title:        collembolAI.py
 Purpose:             Object Detection and classification for samples of
                      soil fauna invertebrates in fluid
 Dependencies:        See ReadMe
-Last Update:         11.01.2021
+Last Update:         31.01.2021
 Licence:             
 """
 
@@ -20,6 +20,7 @@ from cocosets_utils import testresults2coco, coco2df, draw_coco_bbox, \
                            deduplicate_overlapping_preds, \
                            match_true_n_pred_box
 import cv2
+from deduster import *
 from detectron2.modeling import build_model
 from detectron2 import model_zoo
 from detectron2.data import DatasetCatalog, MetadataCatalog, build_detection_test_loader
@@ -65,7 +66,6 @@ PIL.Image.MAX_IMAGE_PIXELS = 500000000
 #         |-img2.jpg
 #         |-[...]
 
-
 # train: Annotated Images for training
 # train.json: Annotations + Path to Images for all images stored in train
 # test: Annotated Images for model evaluation (Taken from train)
@@ -79,7 +79,6 @@ class collembola_ai:
     config = configparser.ConfigParser()
     config.read("CAI.conf")
 
-    # def __init__(self, workingdir: str, outputdir: str, n_iterations: int = 8000, work_num: int = 2, my_batch_size: int = 5, learning_rate: float = 0.00025, number_classes:int = 10, treshhold: float = 0.55):
     def __init__(self, config_path='CAI.conf', gpu_num='0'):
         """Function to initialize the CollembolaAI main class. These Parameters will be used to configure Detectron2"""
         
@@ -93,6 +92,8 @@ class collembola_ai:
         self.output_directory = os.path.join(self.project_directory, self.model_name)
         self.train_directory = os.path.join(self.project_directory, "train")
         self.test_directory = os.path.join(self.project_directory, "test")
+        self.dust_directory = os.path.join(self.project_directory, "dust")
+        self.deduster_path = os.path.join(self.project_directory, "deduster")
         self.inference_directory = os.path.join(self.project_directory, config['OPTIONAL']["inference_directory"])
         
         # set model parameters
@@ -205,6 +206,35 @@ class collembola_ai:
         trainer.resume_or_load(resume=False)
         trainer.train()
         print("\n---------------Finished Training---------------")
+        
+        
+    def start_training_deduster(self):
+        '''This function will configure Detectron with your input Parameters and start the Training.
+        HINT: If you want to check your Parameters before training use "print_model_values"'''
+        
+        
+        with open(os.path.join(self.train_directory, "train.json"), 'r') as j:
+            train =  json.load(j)
+            df_train = coco2df(train)
+            df_train['id_train'] = df_train['id']
+            
+        ######  
+        # Finding some dust using the trained rCNN model
+        self.perfom_inference_on_folder(inference_directory=self.dust_directory, imgtype = "jpg")
+                
+        tdust = testresults2coco(self.test_directory, self.output_directory, write=True)  
+        df_dust = coco2df(tdust)   
+    
+        # Grabing some pieces of background in the train set
+        extract_random_background_subpictures(df_train, self.train_directory, f'{self.deduster_path}/train/Dust', num_subpict_per_pict=200)
+        
+        print('Preparing the deduster training and validation data')
+        deduster.dump_training_set(self.train_directory, self.dust_directory, self.deduster_path, df_train, df_dust)
+        print('Training and validating the deduster')
+        deduster.train_deduster(self.deduster_path):
+
+        print('Deduster trained')
+        
 
     def start_evaluation_on_test(self):
         """This function will start the testing the model on test_set1 and test_set2"""
@@ -252,38 +282,6 @@ class collembola_ai:
         val_loader = build_detection_test_loader(cfg, "test")
         print(inference_on_dataset(trainer.model, val_loader, evaluator))
         
-        # From Clem: I deactivate the following block, its function is replaced by the five above lines
-        # I also made a custom function for vizualisation which may not be as streamlined
-        # as the detectron visualizer, but so far provide a more readble output.
-        
-        #try:
-        #    i = 0
-        #    for d in dataset_dicts_test:
-        #         #create variable with output name
-        #        output_name = output_test_res + "/annotated_" + str(i) + ".jpg"
-        #        img = cv2.imread(d["file_name"])
-        #        print(f"Processing: \t{output_name}")
-        #        #make prediction
-        #        outputs = predictor(img)
-        #        #draw prediction
-        #        visualizer = Visualizer(img[:, :, ::-1], metadata=dataset_metadata_test, scale=1.)
-        #        instances = outputs["instances"].to("cpu")
-        #        vis = visualizer.draw_instance_predictions(instances)
-        #        result = vis.get_image()[:, :, ::-1]
-        #        #write image
-        #        write_res = cv2.imwrite(output_name, result)
-        #        i += 1
-        #except:
-        #    traceback.print_exc()
-        #    print("Something went wrong while evaluating the \"test\" set. Please check your path directory structure\nUse \"print_model_values\" for debugging")
-
-        #model = build_model(cfg)
-
-        #evaluator = COCOEvaluator("test", cfg, False, output_dir=output_test_res)
-        #val_loader = build_detection_test_loader(cfg, "test")
-        #print(inference_on_dataset(model, val_loader, evaluator))
-        #output_testset2 = os.path.join(self.output_directory, "testset2")
-        #os.makedirs(output_testset2, exist_ok=True)
         print('Report on evaluation')
         
         print('\n\nLoading predicted labels from "coco_instances_results.json", ,)
@@ -366,7 +364,7 @@ class collembola_ai:
 
         print("\n---------------Finished Evaluation---------------")
 
-    def perfom_inference_on_folder(self, imgtype = "jpg"):
+    def perfom_inference_on_folder(self, inference_directory = self.inference_directory, imgtype = "jpg"):
         '''This function can be used to test a trained model with a set of images or to perform inference on data you want to classify.
         IMPORTANT: You still have to load a model using "load_train_test"'''
         try:
@@ -396,8 +394,8 @@ class collembola_ai:
             print("Something went wrong while loading the model configuration. Please Check your path\'")
             raise
  
-        inference_out = os.path.join(self.inference_directory, self.model_name)          
-        n_files = len(([f for f in os.listdir(self.inference_directory) if f.endswith(imgtype)]))
+        inference_out = os.path.join(inference_directory, self.model_name)          
+        n_files = len(([f for f in os.listdir(inference_directory) if f.endswith(imgtype)]))
         counter = 1
 
         print(f"Starting inference ...\nNumber of Files:\t{n_files}\nImage extension:\t{imgtype}")
@@ -408,14 +406,16 @@ class collembola_ai:
             with warnings.catch_warnings():
                 warnings.simplefilter('ignore')
                 os.makedirs(inference_out, exist_ok=True)
-                for i in os.listdir(self.inference_directory):
+                for i in os.listdir(inference_directory):
                     if i.endswith(imgtype):
-                        file_path = os.path.join(self.inference_directory, i)
+                        file_path = os.path.join(inference_directory, i)
                         print(f"processing [{counter}/{n_files}]", end='\r')
                         im = cv2.imread(file_path)
                         outputs = predictor(im)
                         v = Visualizer(im[:, :, ::-1], metadata=dataset_metadata_test, scale=1.)
                         instances = outputs["instances"].to("cpu")
+                        with open(file_path[:-4]+'.json', 'w') as j:
+                            json.dump(instances,j, indent=4)
                         v = v.draw_instance_predictions(instances)
                         result = v.get_image()[:, :, ::-1]
                         output_name = f"{inference_out}/annotated_{i}"
@@ -435,6 +435,9 @@ def main():
     parser.add_argument('-t', '--train',action='store_true',
             help='''(re-)Train a model using the train set of pictures (default: skip)''')
     
+    parser.add_argument('-d', '--dedust',action='store_true',
+            help='''(re-)Train a deduster using the train set of pictures (require a trained rCNN first, default: skip)''')
+              
     parser.add_argument('-e', '--evaluate',action='store_true',
             help='''Evaluate the model using the test set of pictures (default: skip)''')
     
@@ -474,6 +477,12 @@ def main():
         My_Model.start_training()
     else:
         print("Skipping training")
+              
+    if args.train_deduster:
+        # start training 
+        My_Model.start_training_deduster()
+    else:
+        print("Skipping deduster training")
 
     if args.evaluate:
         # start evaluation on My_Model.set

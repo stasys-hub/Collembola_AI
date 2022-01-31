@@ -190,13 +190,16 @@ def match_true_n_pred_box(df_ttruth, df_pred, IoU_threshold=0.4):
     df2 = df2.drop_duplicates(subset=['id_pred'], keep='first')
     df2 = df2.drop_duplicates(subset=['id_true'], keep='first')
 
+    
     pairs = df_ttruth[['id_true', 'name']].merge(df2[['id_true', 'id_pred']], how='left', on='id_true')\
-        .merge(df2[['id_pred', 'score']], how='outer', on='id_pred')
+        .merge(df2[['id_pred', 'score']], how='outer', on='id_pred')\
+        .rename(columns={"name": "name_true"})
 
-    pairs = pairs.merge(df_pred[['id_pred', 'name']], how='outer', on='id_pred')
+    pairs = pairs.merge(df_pred[['id_pred', 'name']], how='outer', on='id_pred')\
+                 .rename(columns={"name": "name_pred"})
 
-    pairs['is_correct'] = (pairs['name_x'] == pairs['name_y'])
-    pairs['is_correct_class'] = (pairs['name_x'] == pairs['name_y']).where(pairs.id_pred.notnull(), np.nan)
+    pairs['is_correct'] = (pairs['name_true'] == pairs['name_pred'])
+    pairs['is_correct_class'] = (pairs['name_true'] == pairs['name_pred']).where(pairs.id_pred.notnull(), np.nan)
         
     return pairs
 
@@ -306,3 +309,42 @@ def mergecocos(coco1_i, coco2_i):
     numerize_img_id(cocomerged)
     
     return cocomerged
+
+
+def make_a_random_box(max_ratio, min_ratio, max_length, min_length, img_width, img_height):
+    height = int(random.uniform(min_length, max_length))
+    width = int(height * random.uniform(0.5, 1.5))
+    x= int(random.uniform(0, img_width-width))
+    y= int(random.uniform(0, img_height-height))
+    rbox = geo.Polygon([[x,y],[x+width,y],[x+width, y+height], [x, y+height]])
+    return rbox
+
+
+def extract_random_background_subpictures(coco_df, pictures_dir, num_subpict_per_pict=200, output_dir):
+    
+    # Get min ratio and max ratio of annotation in the train set
+    max_ratio = coco_df.bbox.apply(lambda x:x[3]/x[2]).max()
+    min_ratio = coco_df.bbox.apply(lambda x:x[3]/x[2]).min()
+    max_length = int(coco_df.bbox.apply(lambda x:x[2]).max() / 2) #division by 2 because large background boxes are not really a thing.
+    min_length = coco_df.bbox.apply(lambda x:x[2]).min()
+
+    bnum = 0
+
+    for file in train.file_name.unique():
+    
+        num_pict = 0
+        subcoco_df = coco_df[coco_df['file_name']==file]
+    
+        img_width = subcoco_df.width.values[0]
+        img_height = subcoco_df.height.values[0]
+        
+        im = Image.open(pictures_dir + '/' + file)
+        
+        while num_pict < num_subpict_per_pict:
+            rbox = make_a_random_box(max_ratio, min_ratio, max_length, min_length, img_width, img_height)
+                #if not overlapping with a specimen
+            if not subcoco_df['box'].apply(lambda x:x.intersects(rbox)).any():
+                im.crop(rbox.bounds).save(f'{output_dir}/background_{bnum}.jpg','JPEG')
+                bnum += 1
+                num_pict += 1
+        print(f'{num_pict} written for {file}')
