@@ -287,8 +287,14 @@ class collembola_ai:
         print('\n\nLoading predicted labels from "coco_instances_results.json", ,)
         tpred = testresults2coco(self.test_directory, self.output_directory, write=True)
 
-        print('\n\nLoading predictions and deduplicating overlaping predictions')
-        df_pred = deduplicate_overlapping_preds(coco2df(tpred), 0.4)
+        #print('\n\nLoading predictions and deduplicating overlaping predictions')
+        df_pred = deduplicate_overlapping_preds(coco2df(tpred), dedup_thresh)
+
+        #Dedusting
+        deduster.load_deduster_and_classify(deduster_path)
+        reclass = pd.read_csv(f'{deduster_path}/dedust.csv')
+        df_pred = df_pred.merge(reclass, on='id')
+        df_pred = df_pred[df_pred['re_classification'] != 'Dust']
         
         with open(os.path.join(self.test_directory, "test.json"), 'r') as j:
                 ttruth =  json.load(j)
@@ -303,7 +309,7 @@ class collembola_ai:
         tt_abundances = df_train.name.value_counts().to_frame().join(df_ttruth.name.value_counts(), lsuffix='_train', rsuffix='_test')
         tt_abundances.columns = ['Train', 'Test']         
 
-        print('\n\nAbundance and area of each species in the train and test pictures (true and predicted)\n')
+        #print('\n\nAbundance and area of each species in the train and test pictures (true and predicted)\n')
         tt_abundances = tt_abundances.join(df_pred.name.value_counts())\
                                     .join(df_ttruth.groupby('name').sum()['area'])\
                                     .join(df_pred.groupby('name').sum()['area'], rsuffix="pred")
@@ -311,33 +317,40 @@ class collembola_ai:
         tt_abundances['Perc Pred True'] = tt_abundances['Test Pred Area'] / tt_abundances['Test True Area'] * 100
         tt_abundances['Test True Contribution To Total Area'] =  tt_abundances['Test True Area'] / tt_abundances['Test True Area'].sum() * 100
         tt_abundances['Test Pred Contribution To Total Area'] =  tt_abundances['Test Pred Area'] / tt_abundances['Test Pred Area'].sum() * 100
-        print(tt_abundances.to_markdown())
-        print(self.output_directory)
+        #print(tt_abundances.to_markdown())
+        #print(output_directory)
         tt_abundances.to_csv(os.path.join(self.output_directory, "test_results/species_abundance_n_area.tsv"), sep='\t')
+
         pairs = match_true_n_pred_box(df_ttruth, df_pred, IoU_threshold=0.4)
-              
-              
+
         total_true_labels = pairs.id_true.notnull().sum()
         true_labels_without_matching_preds = pairs.id_pred.isnull().sum()
         perc_detected_animals = 100 - (true_labels_without_matching_preds / total_true_labels * 100)
         perc_correct_class = pairs['is_correct_class'].sum() / pairs.dropna().shape[0] * 100
 
+        if print_stuff:
         #print(f'\n')
-        print(f'The test set represents a total of {total_true_labels} specimens.')
-        print(f'The model produced {len(tpred["annotations"])} prediction, of which {df_pred.shape[0]} remains after deduplication' +
-               ' and removal of oversized bounding boxes.')
-        print(f'{total_true_labels - true_labels_without_matching_preds} ({round(perc_detected_animals, 1)}% of the total) ' + 
-               'of the actual specimens were correcly detected.' +
-               f' Of those detected specimens, {int(pairs["is_correct_class"].sum())} (= {round(perc_correct_class, 1)}%) where assigned to the correct species.')
+            print(f'The test set represents a total of {total_true_labels} specimens.')
+            print(f'The model produced {len(tpred["annotations"])} prediction, of which {df_pred.shape[0]} remains after deduplication' +
+                ' and removal of oversized bounding boxes.')
+            print(f'{total_true_labels - true_labels_without_matching_preds} ({round(perc_detected_animals, 1)}% of the total) ' + 
+                'of the actual specimens were correcly detected.' +
+                f' Of those detected specimens, {int(pairs["is_correct_class"].sum())} (= {round(perc_correct_class, 1)}%) where assigned to the correct species.')
 
         # Tagging False positive on df_pred
         df_pred = df_pred.merge(pairs[['id_pred', 'id_true']], how='left', on='id_pred')
         df_pred['is_false_positive'] = True
         df_pred['is_false_positive'] = df_pred['is_false_positive'].where(df_pred['id_true'].isnull(), False)
+        
+        # Adding outcomes on df_ttruth
+        df_ttruth = df_ttruth.merge(pairs[pairs['name_true'].notnull()][['id_true', 'score', 'name_pred', 'is_correct_class']], on='id_true')
+        df_ttruth['is_detected'] = df_ttruth['is_correct_class'].where(df_ttruth['is_correct_class'].isnull(), 1).fillna(0)
 
-        print(f'Of the predicted labels, {df_pred["is_false_positive"].sum()} '+
-        f'(={round(df_pred["is_false_positive"].sum() / df_pred.shape[0] * 100,1)}%) '+
-         'where false positive (background, not related to a real specimen)')
+        if print_stuff:
+            print(f'Of the predicted labels, {df_pred["is_false_positive"].sum()} '+
+                f'(={round(df_pred["is_false_positive"].sum() / df_pred.shape[0] * 100,1)}%) '+
+                'where false positive (background, not related to a real specimen)')             
+                            
 
         print('\n\nDrawing the predicted annotations of the test pictures to support visual verification')
         print('Do not use for testing or for training ! =)')
