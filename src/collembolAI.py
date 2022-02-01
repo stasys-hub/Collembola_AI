@@ -20,7 +20,7 @@ from cocosets_utils import testresults2coco, coco2df, draw_coco_bbox, \
                            deduplicate_overlapping_preds, \
                            match_true_n_pred_box
 import cv2
-from deduster import *
+from duster import *
 from detectron2.modeling import build_model
 from detectron2 import model_zoo
 from detectron2.data import DatasetCatalog, MetadataCatalog, build_detection_test_loader
@@ -41,15 +41,15 @@ import warnings
 
 PIL.Image.MAX_IMAGE_PIXELS = 500000000
 
-# please ensure the following structure:
-# project_directory ............. working directory, where a set of pictures for training or automatic annotating is deposited.
+# Please ensure the following structure for the working directory
+
+# working_directory ............. w
+where a set of pictures for training or automatic annotating is deposited.
 # |
-# |
-# |-collembolaAI.py 
-# |-CAI.conf .................... configuration file.
+# |-CAI.conf ................ configuration file.
 # |
 # |- -|
-#     |-train ................... contains the training set of pictures, with annotation in COCO format (train.json)
+#     |-train ............... contains the training set of pictures, with annotation in COCO format (train.json)
 #     |   |-img1.jpg
 #     |   |-img2.jpg
 #     |   |-[...]
@@ -61,17 +61,21 @@ PIL.Image.MAX_IMAGE_PIXELS = 500000000
 #     |   |-[...]
 #     |   |-test.json
 #     |
-#     |-inference(optional) ....  contains the set of pictures to annotate with the model
+#     |-dust (optional)...... contains training set of background only pictures (no annotation needed).
+#     |   |-img1.jpg
+#     |   |-img2.jpg
+#     |   |-[...]
+#     | 
+#     |-inference(optional).. contains the set of pictures to annotate with the model
 #         |-img1.jpg
 #         |-img2.jpg
 #         |-[...]
 
-# train: Annotated Images for training
-# train.json: Annotations + Path to Images for all images stored in train
-# test: Annotated Images for model evaluation (Taken from train)
-# test.json: Like train.json but for test
-
-# OOP Version of CollembolaAI
+# train: annotated images for training
+# train.json: Annotations + path to images for all images stored in train (JSON/COCO format)
+# test: annotated images for model evaluation
+# test.json: like train.json but for test (JSON/COCO format) 
+# OOP Version of CollembolAI
 
 class collembola_ai:
 
@@ -93,7 +97,7 @@ class collembola_ai:
         self.train_directory = os.path.join(self.project_directory, "train")
         self.test_directory = os.path.join(self.project_directory, "test")
         self.dust_directory = os.path.join(self.project_directory, "dust")
-        self.deduster_path = os.path.join(self.project_directory, "deduster")
+        self.duster_path = os.path.join(self.project_directory, "duster")
         self.inference_directory = os.path.join(self.project_directory, config['OPTIONAL']["inference_directory"])
         
         # set model parameters
@@ -208,11 +212,10 @@ class collembola_ai:
         print("\n---------------Finished Training---------------")
         
         
-    def start_training_deduster(self):
+    def start_training_duster(self, dedup_thresh=0.15, print_stuff=True):
         '''This function will configure Detectron with your input Parameters and start the Training.
         HINT: If you want to check your Parameters before training use "print_model_values"'''
-        
-        
+                
         with open(os.path.join(self.train_directory, "train.json"), 'r') as j:
             train =  json.load(j)
             df_train = coco2df(train)
@@ -226,20 +229,27 @@ class collembola_ai:
         df_dust = coco2df(tdust)   
     
         # Grabing some pieces of background in the train set
-        extract_random_background_subpictures(df_train, self.train_directory, f'{self.deduster_path}/train/Dust', num_subpict_per_pict=200)
+        extract_random_background_subpictures(df_train, self.train_directory, f'{self.duster_path}/train/Dust', num_subpict_per_pict=200)
         
-        print('Preparing the deduster training and validation data')
-        deduster.dump_training_set(self.train_directory, self.dust_directory, self.deduster_path, df_train, df_dust)
-        print('Training and validating the deduster')
-        deduster.train_deduster(self.deduster_path):
+        print('Preparing the duster training and validation data')
+        duster.dump_training_set(self.train_directory, self.dust_directory, self.duster_path, df_train, df_dust)
+        print('Training and validating the duster')
+        duster.train_duster(self.duster_path):
 
-        print('Deduster trained')
+        print('duster trained')
         
 
     def start_evaluation_on_test(self):
-        """This function will start the testing the model on test_set1 and test_set2"""
+        '''This function will run the trained model on the test dataset (test/test.json)'''
 
-        # reload the model
+        # RUNNING INFERENCE
+        #================================================================================================
+        # Creating the output directories tree
+        os.makedirs(self.output_directory, exist_ok=True)
+        output_test_res = os.path.join(self.output_directory, "test_results")
+        os.makedirs(output_test_res, exist_ok=True)
+        
+        # Loading the model
         cfg = get_cfg()
         cfg.merge_from_file(model_zoo.get_config_file(self.model_zoo_config))
         cfg.DATASETS.TRAIN = ("train",)
@@ -253,49 +263,50 @@ class collembola_ai:
         cfg.nms = True
         cfg.MODEL.DEVICE = self.gpu_num
 
-        #config for test mode
+        # Configuration for test mode
         print(os.path.join(self.output_directory, "model_final.pth"))
         cfg.MODEL.WEIGHTS = os.path.join(self.output_directory, "model_final.pth")
         cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = self.threshold
         cfg.DATASETS.TEST = ("test", )
         
-        #Improving detection on crowed picture ?
+        # Improving detection on crowed picture
         cfg.MODEL.RPN.POST_NMS_TOPK_TEST = 10000
         cfg.MODEL.RPN.PRE_NMS_TOPK_TEST = 10000
         cfg.TEST.DETECTIONS_PER_IMAGE = 10000
         predictor = DefaultPredictor(cfg)
-        #prepare test dataset
+        
+        # Preparing the test dataset
         dataset_dicts_test = DatasetCatalog.get("test")
         dataset_metadata_test = MetadataCatalog.get("test")
-
-        #annotate all pictures of testset1 and testset2 with the predictions of the trained model
-        os.makedirs(self.output_directory, exist_ok=True)
-        output_test_res = os.path.join(self.output_directory, "test_results")
-        os.makedirs(output_test_res, exist_ok=True)
-        #output_testset2 = os.path.join(self.output_directory, "testset2")
-        #os.makedirs(output_testset2, exist_ok=True)
-
+        
+        # Configuring trainer and evaluator
         trainer = DefaultTrainer(cfg)
         trainer.resume_or_load(resume=True)
-
         evaluator = COCOEvaluator("test", cfg, False, output_dir=output_test_res)
         val_loader = build_detection_test_loader(cfg, "test")
+        
+        # Running the inference
         print(inference_on_dataset(trainer.model, val_loader, evaluator))
+        #================================================================================================
         
-        print('Report on evaluation')
         
-        print('\n\nLoading predicted labels from "coco_instances_results.json", ,)
+        # REPORTING
+        #================================================================================================
+        print('Reporting and evaluating the inference on test set')
+        print('\n\nLoading predicted labels from "coco_instances_results.json"')
+        
+        # Loading the predictions in a DataFrame, deduplicating overlaping predictions
         tpred = testresults2coco(self.test_directory, self.output_directory, write=True)
-
-        #print('\n\nLoading predictions and deduplicating overlaping predictions')
         df_pred = deduplicate_overlapping_preds(coco2df(tpred), dedup_thresh)
 
-        #Dedusting
-        deduster.load_deduster_and_classify(deduster_path)
-        reclass = pd.read_csv(f'{deduster_path}/dedust.csv')
-        df_pred = df_pred.merge(reclass, on='id')
+        # Dusting (identifying and removing False Positive ('dust'))
+        duster.load_duster_and_classify(duster_path)
+        dust = pd.read_csv(f'{duster_path}/dust.csv')
+        df_pred = df_pred.merge(dust, on='id')
         df_pred = df_pred[df_pred['re_classification'] != 'Dust']
         
+        
+        # Loading train set and test set in DataFrame
         with open(os.path.join(self.test_directory, "test.json"), 'r') as j:
                 ttruth =  json.load(j)
                 df_ttruth = coco2df(ttruth)
@@ -305,11 +316,11 @@ class collembola_ai:
                 train =  json.load(j)
                 df_train = coco2df(train)
                 df_train['id_train'] = df_train['id']
-
+        
+        # Computing representation (abundance and area) of each classes in the train and test dataset
+        #------------------------------------------------------------------------------------------------
         tt_abundances = df_train.name.value_counts().to_frame().join(df_ttruth.name.value_counts(), lsuffix='_train', rsuffix='_test')
         tt_abundances.columns = ['Train', 'Test']         
-
-        #print('\n\nAbundance and area of each species in the train and test pictures (true and predicted)\n')
         tt_abundances = tt_abundances.join(df_pred.name.value_counts())\
                                     .join(df_ttruth.groupby('name').sum()['area'])\
                                     .join(df_pred.groupby('name').sum()['area'], rsuffix="pred")
@@ -317,69 +328,84 @@ class collembola_ai:
         tt_abundances['Perc Pred True'] = tt_abundances['Test Pred Area'] / tt_abundances['Test True Area'] * 100
         tt_abundances['Test True Contribution To Total Area'] =  tt_abundances['Test True Area'] / tt_abundances['Test True Area'].sum() * 100
         tt_abundances['Test Pred Contribution To Total Area'] =  tt_abundances['Test Pred Area'] / tt_abundances['Test Pred Area'].sum() * 100
-        #print(tt_abundances.to_markdown())
-        #print(output_directory)
         tt_abundances.to_csv(os.path.join(self.output_directory, "test_results/species_abundance_n_area.tsv"), sep='\t')
-
+        #------------------------------------------------------------------------------------------------
+        
+        # Matching the predicted annotations with the true annotations
         pairs = match_true_n_pred_box(df_ttruth, df_pred, IoU_threshold=0.4)
 
+        # Computing detection rate, classification accuracy, false positive rate
+        #------------------------------------------------------------------------------------------------
         total_true_labels = pairs.id_true.notnull().sum()
         true_labels_without_matching_preds = pairs.id_pred.isnull().sum()
         perc_detected_animals = 100 - (true_labels_without_matching_preds / total_true_labels * 100)
         perc_correct_class = pairs['is_correct_class'].sum() / pairs.dropna().shape[0] * 100
 
         if print_stuff:
-        #print(f'\n')
             print(f'The test set represents a total of {total_true_labels} specimens.')
             print(f'The model produced {len(tpred["annotations"])} prediction, of which {df_pred.shape[0]} remains after deduplication' +
-                ' and removal of oversized bounding boxes.')
+                   ' and removal of oversized bounding boxes.')
             print(f'{total_true_labels - true_labels_without_matching_preds} ({round(perc_detected_animals, 1)}% of the total) ' + 
-                'of the actual specimens were correcly detected.' +
-                f' Of those detected specimens, {int(pairs["is_correct_class"].sum())} (= {round(perc_correct_class, 1)}%) where assigned to the correct species.')
+                   'of the actual specimens were correcly detected.' +
+                  f' Of those detected specimens, {int(pairs["is_correct_class"].sum())} (= {round(perc_correct_class, 1)}%) where assigned to the correct species.')
 
-        # Tagging False positive on df_pred
+        
+        # Tagging the false positives in df_pred
         df_pred = df_pred.merge(pairs[['id_pred', 'id_true']], how='left', on='id_pred')
         df_pred['is_false_positive'] = True
         df_pred['is_false_positive'] = df_pred['is_false_positive'].where(df_pred['id_true'].isnull(), False)
         
-        # Adding outcomes on df_ttruth
+        # Adding inference outcomes on the true labels, df_ttruth
         df_ttruth = df_ttruth.merge(pairs[pairs['name_true'].notnull()][['id_true', 'score', 'name_pred', 'is_correct_class']], on='id_true')
         df_ttruth['is_detected'] = df_ttruth['is_correct_class'].where(df_ttruth['is_correct_class'].isnull(), 1).fillna(0)
 
         if print_stuff:
             print(f'Of the predicted labels, {df_pred["is_false_positive"].sum()} '+
-                f'(={round(df_pred["is_false_positive"].sum() / df_pred.shape[0] * 100,1)}%) '+
-                'where false positive (background, not related to a real specimen)')             
-                            
-
+                  f'(={round(df_pred["is_false_positive"].sum() / df_pred.shape[0] * 100,1)}%) '+
+                   'where false positive (background, not related to a real specimen)')
+        #------------------------------------------------------------------------------------------------
+              
+        # Drawing the predicted annotations on the pictures
+        #------------------------------------------------------------------------------------------------
         print('\n\nDrawing the predicted annotations of the test pictures to support visual verification')
         print('Do not use for testing or for training ! =)')
-        draw_coco_bbox(df_pred, os.path.join(self.output_directory, "test_results"), self.test_directory, prefix="predicted", line_width=10, fontsize = 150, fontYshift = -125)
+        draw_coco_bbox(df_pred, os.path.join(self.output_directory, "test_results"), self.test_directory, 
+                       prefix="predicted", line_width=10, fontsize = 150, fontYshift = -125)
+        #------------------------------------------------------------------------------------------------
 
+        # Plotting the confusion matrices
+        #------------------------------------------------------------------------------------------------
+        # 1. CM including only the detected true label
         mcm = confusion_matrix(pairs.dropna().name_x, pairs.dropna().name_y.fillna('NaN'), labels = pairs.dropna().name_x.unique())
         plot_confusion_matrix(mcm, pairs.dropna().name_x.unique(), normalize=False,
-                 write=os.path.join(self.output_directory, "test_results/cm_onlydetected.png"))
-
-        #The normalized matrix output is bugged in the plot_confusion_matrix function from sklearn, thus I normalize the 
-        # matrix here before plotting
+                write=os.path.join(self.output_directory, "test_results/cm_onlydetected.png"))
+        
+        # 2. CM including only the detected true label, normalized
+        # Note: the normalized matrix option is bugged in the plot_confusion_matrix function from sklearn
+        # Thus I normalize the matrix here before plotting and don't use the option
         mcm = mcm.astype('float') / mcm.sum(axis=1)[:, np.newaxis] * 100
         mcm = mcm.round(1)
         plot_confusion_matrix(mcm, pairs.dropna().name_x.unique(), normalize=False, 
-                   write=os.path.join(self.output_directory, "test_results/cm_norm_onlydetected.png"))
-
+                write=os.path.join(self.output_directory, "test_results/cm_norm_onlydetected.png"))
+        
+        # 3. CM including only the undetected true label (Nan)
         mcm = confusion_matrix(pairs.name_x.fillna('NaN'), pairs.name_y.fillna('NaN'), labels = pairs.fillna('NaN').name_x.unique())
         plot_confusion_matrix(mcm, np.append(pairs.name_x.unique(), 'NaN'), normalize=False,
-                   write=os.path.join(self.output_directory, "test_results/cm_inclNaN.png"))
+                write=os.path.join(self.output_directory, "test_results/cm_inclNaN.png"))
+        
+        # 4. CM including only the undetected true label (Nan), normalized
         mcm = mcm.astype('float') / mcm.sum(axis=1)[:, np.newaxis] * 100
-        mcm = np.nan_to_num(mcm.round(1))                                                                                 
+        mcm = np.nan_to_num(mcm.round(1))
         plot_confusion_matrix(mcm, pairs.fillna('NaN').name_x.unique(), normalize=False, 
-                         write=os.path.join(self.output_directory, "test_results/cm_norm_inclNaN.png"))     
+                write=os.path.join(self.output_directory, "test_results/cm_norm_inclNaN.png"))     
 
         print("\n---------------Finished Evaluation---------------")
+        
+        #================================================================================================
 
     def perfom_inference_on_folder(self, inference_directory = self.inference_directory, imgtype = "jpg"):
-        '''This function can be used to test a trained model with a set of images or to perform inference on data you want to classify.
-        IMPORTANT: You still have to load a model using "load_train_test"'''
+        '''This function can be used to perform inference on the unannotated data you want to classify.
+           IMPORTANT: You still have to load a model using "load_train_test"'''
         try:
             # reload the model
             cfg = get_cfg()
@@ -448,8 +474,8 @@ def main():
     parser.add_argument('-t', '--train',action='store_true',
             help='''(re-)Train a model using the train set of pictures (default: skip)''')
     
-    parser.add_argument('-d', '--dedust',action='store_true',
-            help='''(re-)Train a deduster using the train set of pictures (require a trained rCNN first, default: skip)''')
+    parser.add_argument('-d', '--train_duster',action='store_true',
+            help='''(re-)Train the CNN "duster" using the train set of pictures (require a trained rCNN first, default: skip)''')
               
     parser.add_argument('-e', '--evaluate',action='store_true',
             help='''Evaluate the model using the test set of pictures (default: skip)''')
@@ -457,7 +483,7 @@ def main():
     parser.add_argument('-a', '--annotate',action='store_true',
             help='''Annotate the inference set of pictures (default: skip)''')
 
-    parser.add_argument('-d', '--describe_train_test',action='store_true',
+    parser.add_argument('-s', '--sets_description',action='store_true',
             help='''Output some descriptions elements for the train and test set in the project directory''')
     
     parser.add_argument('--visible_gpu', type=str, default="0",
@@ -468,21 +494,21 @@ def main():
 
     args=parser.parse_args()
 
-        
     os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
     os.environ["CUDA_VISIBLE_DEVICES"] = args.visible_gpu
 
 
-    # Example: Run Collembola_AI with your defined parameters
+    # Example: Run CollembolAI with your defined parameters
     # Define your model parameters
-    
     My_Model = collembola_ai(config_path = args.config_file, gpu_num = args.gpu_num)
+              
     # print the model parameters
     My_Model.print_model_values()
+              
     # register the training and My_Model.sets in detectron2
     My_Model.load_train_test()
 
-    if args.describe_train_test:
+    if args.sets_description:
         My_Model.describe_train_test()
 
     if args.train:
@@ -491,11 +517,11 @@ def main():
     else:
         print("Skipping training")
               
-    if args.train_deduster:
+    if args.train_duster:
         # start training 
-        My_Model.start_training_deduster()
+        My_Model.start_training_duster(dedup_thresh=0.15, print_stuff=True)
     else:
-        print("Skipping deduster training")
+        print("Skipping duster training")
 
     if args.evaluate:
         # start evaluation on My_Model.set
