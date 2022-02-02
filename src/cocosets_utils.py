@@ -320,7 +320,7 @@ def make_a_random_box(max_ratio, min_ratio, max_length, min_length, img_width, i
     return rbox
 
 
-def extract_random_background_subpictures(coco_df, pictures_dir, num_subpict_per_pict=200, output_dir):
+def extract_random_background_subpictures(coco_df, pictures_dir, output_dir, num_subpict_per_pict=200):
     
     # Get min ratio and max ratio of annotation in the train set
     max_ratio = coco_df.bbox.apply(lambda x:x[3]/x[2]).max()
@@ -348,3 +348,15 @@ def extract_random_background_subpictures(coco_df, pictures_dir, num_subpict_per
                 bnum += 1
                 num_pict += 1
         print(f'{num_pict} written for {file}')
+
+def d2_instance2dict(d2_instance):
+    '''
+    Convert a detectron2 instance into a JSON serializable dict.
+    '''
+    instance = dict(d2_instance.get_fields())
+    instance['image_size'] = d2_instance.image_size
+    instance['pred_boxes'] = [int(j) for i in np.round(instance['pred_boxes'].tensor.numpy()).astype('int') for j in i]
+    instance['scores'] = [round(float(i), 4) for i in instance['scores'].numpy()]
+    instance['pred_classes'] = [int(i) for i in list(instance['pred_classes'].numpy())]
+    return instance
+

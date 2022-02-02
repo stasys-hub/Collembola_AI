@@ -12,7 +12,7 @@ Licence:
 The following code is adapted from https://blog.keras.io/building-powerful-image-classification-models-using-very-little-data.html
 """
 import os
-import path
+import ntpath
 import PIL
 import random
 import rglob
@@ -54,14 +54,14 @@ def dump_training_set(train_directory, dust_directory, duster_path, df_train, df
     num_val = len(animals_list) * 20 / 100
     os.makedirs(f'{duster_path}/validation/Animal', exist_ok=True)
     for i in animals_list[:num_val]:
-        shutil.move(i, f'{duster_path}/validation/Animal/{path.Path(i).basename()}')
+        shutil.move(i, f'{duster_path}/validation/Animal/{ntpath.basename(i)}')
         
     dust_list= list(Path(f'{duster_path}/dust').rglob('*.jpg'))        
     random.shuffle(dust_list)
     num_val = len(dust_list) * 20 / 100
     os.makedirs(f'{duster_path}/validation/Dust', exist_ok=True)
     for i in dust_list[:num_val]:
-        shutil.move(i, f'{duster_path}/validation/Dust/{path.Path(i).basename()}')    
+        shutil.move(i, f'{duster_path}/validation/Dust/{ntpath.basename(i)}')    
 
     
 def get_image_datagen():
@@ -134,7 +134,7 @@ def train_duster(duster_path):
         validation_data=validation_generator,
         validation_steps=800 // batch_size)
     
-        model.save_weights(f'{duster_path}/dust.h5')
+    model.save_weights(f'{duster_path}/dust.h5')
     
 def load_duster_and_classify(model_weights, duster_path):
     '''
@@ -156,7 +156,7 @@ def load_duster_and_classify(model_weights, duster_path):
         batch_size=batch_size)
     
     y_pred = [1 if p[0] > 0.5 else 0 for p in y ]
-    class_indices = {0: 'Animal', 1: 'Dust')}
+    class_indices = {0: 'Animal', 1: 'Dust'}
     y_class = [class_indices[i] for i in y_pred]
     labels_files = list(zip(y_class, test_generator.filenames))
 

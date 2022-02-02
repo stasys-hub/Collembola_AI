@@ -18,7 +18,7 @@ import configparser
 
 from cocosets_utils import testresults2coco, coco2df, draw_coco_bbox, \
                            deduplicate_overlapping_preds, \
-                           match_true_n_pred_box
+                           match_true_n_pred_box, d2_instance2dict
 import cv2
 from duster import *
 from detectron2.modeling import build_model
@@ -44,7 +44,7 @@ PIL.Image.MAX_IMAGE_PIXELS = 500000000
 # Please ensure the following structure for the working directory
 
 # working_directory ............. w
-where a set of pictures for training or automatic annotating is deposited.
+# where a set of pictures for training or automatic annotating is deposited.
 # |
 # |-CAI.conf ................ configuration file.
 # |
@@ -110,7 +110,7 @@ class collembola_ai:
             self.num_classes = len(json.load(js)['categories'])
 
         print('Found {} classes in the training annotation file'.format(self.num_classes))
-        self.threshold = float(config['OPTIONAL']['detection_treshold'])
+        self.threshold = float(config['OPTIONAL']['detection_threshold'])
         self.model_zoo_config = config['OPTIONAL']['model_zoo_config']
 
         # set gpu device to use
@@ -223,7 +223,7 @@ class collembola_ai:
             
         ######  
         # Finding some dust using the trained rCNN model
-        self.perfom_inference_on_folder(inference_directory=self.dust_directory, imgtype = "jpg")
+        self.perform_inference_on_folder(inference_directory=self.dust_directory, imgtype = "jpg")
                 
         tdust = testresults2coco(self.test_directory, self.output_directory, write=True)  
         df_dust = coco2df(tdust)   
@@ -234,7 +234,7 @@ class collembola_ai:
         print('Preparing the duster training and validation data')
         duster.dump_training_set(self.train_directory, self.dust_directory, self.duster_path, df_train, df_dust)
         print('Training and validating the duster')
-        duster.train_duster(self.duster_path):
+        duster.train_duster(self.duster_path)
 
         print('duster trained')
         
@@ -403,9 +403,13 @@ class collembola_ai:
         
         #================================================================================================
 
-    def perfom_inference_on_folder(self, inference_directory = self.inference_directory, imgtype = "jpg"):
+    def perform_inference_on_folder(self, inference_directory = None, imgtype = "jpg"):
         '''This function can be used to perform inference on the unannotated data you want to classify.
            IMPORTANT: You still have to load a model using "load_train_test"'''
+        
+        if not inference_directory:
+            inference_directory = self.inference_directory
+
         try:
             # reload the model
             cfg = get_cfg()
@@ -454,13 +458,14 @@ class collembola_ai:
                         v = Visualizer(im[:, :, ::-1], metadata=dataset_metadata_test, scale=1.)
                         instances = outputs["instances"].to("cpu")
                         with open(file_path[:-4]+'.json', 'w') as j:
-                            json.dump(instances,j, indent=4)
+                            json.dump(d2_instance2dict(instances), j, indent=4)
                         v = v.draw_instance_predictions(instances)
                         result = v.get_image()[:, :, ::-1]
                         output_name = f"{inference_out}/annotated_{i}"
                         write_res = cv2.imwrite(output_name, result)
                         counter += 1
-        except:
+        except Exception as e:
+            print(e)
             print("Something went wrong while performing inference on your data. Please check your path directory structure\nUse \"print_model_values\" for debugging")
 
 
@@ -531,10 +536,7 @@ def main():
 
     if args.annotate:
         # Run inference with your trained model on unlabeled data       
-        #set the image type ( jpg, png, etc...)
-        my_type = "jpg"
-        # run the objectdetection
-        My_Model.perfom_inference_on_folder(imgtype="jpg")
+        My_Model.perform_inference_on_folder(imgtype="jpg")
     else:
         print("Nothing to annotate")
 
