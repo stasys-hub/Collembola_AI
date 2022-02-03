@@ -13,6 +13,7 @@ The following code is adapted from https://blog.keras.io/building-powerful-image
 """
 import os
 import ntpath
+import pandas as pd
 import PIL
 import random
 import rglob
@@ -68,11 +69,14 @@ def get_image_datagen():
     
     rescale=1./255   
     train_datagen = ImageDataGenerator(
-        rescalerescale,
+        rotation_range=40,
+        width_shift_range=0.2,
+        height_shift_range=0.2,
+        rescale=1./255,
         shear_range=0.2,
         zoom_range=0.2,
-        horizontal_flip=True)
-
+        horizontal_flip=True,
+        fill_mode='nearest')
     test_datagen = ImageDataGenerator(rescale=rescale)
     
     return train_datagen, test_datagen
@@ -141,6 +145,7 @@ def load_duster_and_classify(model_weights, duster_path):
     The trained duster will classifiy the pictures in the duster_path in the subfolder 'to_predict'
     Results are written in the dust.csv
     '''
+    batch_size = 16
     
     model = model_configure()
     model.load_weights(f'{duster_path}/dust.h5')

@@ -239,7 +239,7 @@ class collembola_ai:
         print('duster trained')
         
 
-    def start_evaluation_on_test(self):
+    def start_evaluation_on_test(self, dedup_thresh=0.15, verbose=True, dusting=False):
         '''This function will run the trained model on the test dataset (test/test.json)'''
 
         # RUNNING INFERENCE
@@ -300,10 +300,11 @@ class collembola_ai:
         df_pred = deduplicate_overlapping_preds(coco2df(tpred), dedup_thresh)
 
         # Dusting (identifying and removing False Positive ('dust'))
-        duster.load_duster_and_classify(duster_path)
-        dust = pd.read_csv(f'{duster_path}/dust.csv')
-        df_pred = df_pred.merge(dust, on='id')
-        df_pred = df_pred[df_pred['re_classification'] != 'Dust']
+        if dusting:   
+            duster.load_duster_and_classify(self.duster_path)
+            dust = pd.read_csv(f'{self.duster_path}/dust.csv')
+            df_pred = df_pred.merge(dust, on='id')
+            df_pred = df_pred[df_pred['dust'] != 'Dust']
         
         
         # Loading train set and test set in DataFrame
@@ -341,7 +342,7 @@ class collembola_ai:
         perc_detected_animals = 100 - (true_labels_without_matching_preds / total_true_labels * 100)
         perc_correct_class = pairs['is_correct_class'].sum() / pairs.dropna().shape[0] * 100
 
-        if print_stuff:
+        if verbose:
             print(f'The test set represents a total of {total_true_labels} specimens.')
             print(f'The model produced {len(tpred["annotations"])} prediction, of which {df_pred.shape[0]} remains after deduplication' +
                    ' and removal of oversized bounding boxes.')
@@ -359,7 +360,7 @@ class collembola_ai:
         df_ttruth = df_ttruth.merge(pairs[pairs['name_true'].notnull()][['id_true', 'score', 'name_pred', 'is_correct_class']], on='id_true')
         df_ttruth['is_detected'] = df_ttruth['is_correct_class'].where(df_ttruth['is_correct_class'].isnull(), 1).fillna(0)
 
-        if print_stuff:
+        if verbose:
             print(f'Of the predicted labels, {df_pred["is_false_positive"].sum()} '+
                   f'(={round(df_pred["is_false_positive"].sum() / df_pred.shape[0] * 100,1)}%) '+
                    'where false positive (background, not related to a real specimen)')
@@ -449,6 +450,7 @@ class collembola_ai:
             with warnings.catch_warnings():
                 warnings.simplefilter('ignore')
                 os.makedirs(inference_out, exist_ok=True)
+                results_coco={'images': [], 'annotations': []}
                 for i in os.listdir(inference_directory):
                     if i.endswith(imgtype):
                         file_path = os.path.join(inference_directory, i)
@@ -457,13 +459,28 @@ class collembola_ai:
                         outputs = predictor(im)
                         v = Visualizer(im[:, :, ::-1], metadata=dataset_metadata_test, scale=1.)
                         instances = outputs["instances"].to("cpu")
-                        with open(file_path[:-4]+'.json', 'w') as j:
-                            json.dump(d2_instance2dict(instances), j, indent=4)
+                        coco = d2_instance2dict(instances, counter, ntpath.basename(i))
                         v = v.draw_instance_predictions(instances)
                         result = v.get_image()[:, :, ::-1]
                         output_name = f"{inference_out}/annotated_{i}"
                         write_res = cv2.imwrite(output_name, result)
                         counter += 1
+
+                        results_coco['images'] = results_coco['images'] + coco['images']
+                        results_coco['annotations'] = results_coco['annotations'] + coco['annotations']
+                        results_coco['type'] = 'instances'
+                        results_coco['licenses'] = ''
+                        results_coco['info'] = ''
+
+                        with open(os.path.join(self.train_directory, "train.json"), 'r') as j:
+                            train = json.load(j)
+                        results_coco['categories'] = train['categories']
+                        
+                        with open(os.path.join(inference_out, "Inferences.json"), 'w') as j:
+                            json.dump(results_coco, j, indent=4)
+                        
+
+                
         except Exception as e:
             print(e)
             print("Something went wrong while performing inference on your data. Please check your path directory structure\nUse \"print_model_values\" for debugging")

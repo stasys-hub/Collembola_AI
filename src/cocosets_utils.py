@@ -349,14 +349,47 @@ def extract_random_background_subpictures(coco_df, pictures_dir, output_dir, num
                 num_pict += 1
         print(f'{num_pict} written for {file}')
 
-def d2_instance2dict(d2_instance):
+def d2_instance2dict(d2_instance, image_id, file_name):
     '''
-    Convert a detectron2 instance into a JSON serializable dict.
+    Convert a detectron2 instance into a JSON serializable dict (COCO annotations format).
     '''
     instance = dict(d2_instance.get_fields())
     instance['image_size'] = d2_instance.image_size
-    instance['pred_boxes'] = [int(j) for i in np.round(instance['pred_boxes'].tensor.numpy()).astype('int') for j in i]
+    
+    pb = list()
+    for i in instance['pred_boxes'].tensor:
+        box = [int(j) for j in np.round(i.numpy()).astype('int')]
+        pb.append(box)
+
+    instance['pred_boxes'] = pb
     instance['scores'] = [round(float(i), 4) for i in instance['scores'].numpy()]
     instance['pred_classes'] = [int(i) for i in list(instance['pred_classes'].numpy())]
-    return instance
 
+    annotations = list()
+    annot_id = 0
+    for v in list(zip(instance['pred_boxes'], instance['scores'], instance['pred_classes'])):
+        annotations.append(
+                {'id': annot_id,
+                 'image_id': image_id, 
+                 'bbox': [v[0][0], v[0][1], v[0][2]-v[0][0], v[0][3]-v[0][1]], 
+                 'score': v[1], 
+                 'category_id': v[2]+1,
+                 'iscrowd':0,
+                 'segmentation': []}
+                )
+        annot_id += 1
+    images = list()
+    images.append(
+            {'file_name': file_name,
+             'height': d2_instance.image_size[0],
+             'width': d2_instance.image_size[1],
+             'id': image_id}
+            )
+
+    return {'annotations': annotations, 'images':images}
+
+def cocoj_get_categories(cocojson):
+    """ Input is path to a coco (json) file. Return a dictionnary category_id : category_name """
+    with open(cocojson, 'r') as f:
+        res = {i['id']: i['name'] for i in json.load(f)['categories']}
+        return res
