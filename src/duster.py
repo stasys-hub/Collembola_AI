@@ -23,7 +23,7 @@ from tensorflow.keras.preprocessing.image import ImageDataGenerator, array_to_im
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Conv2D, MaxPooling2D
 from tensorflow.keras.layers import Activation, Dropout, Flatten, Dense
-from cocosets_utils import coco2df, crop_annotations
+from cocosets_utils import coco2df, crop_annotations, cocoj_get_categories
 
 PIL.Image.MAX_IMAGE_PIXELS = 500000000
 
