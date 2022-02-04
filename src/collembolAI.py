@@ -305,7 +305,32 @@ class collembola_ai:
         df_pred = deduplicate_overlapping_preds(coco2df(tpred), dedup_thresh)
 
         # Dusting (identifying and removing False Positive ('dust'))
-        if dusting:   
+        if dusting:
+            
+                # Extracting subpictures from the predictions
+            print('Extracting and organizing the subpictures for dusting')
+            
+            def wipe_dir(path):
+                if os.path.exists(path) and os.path.isdir(path):
+                    shutil.rmtree(path)
+        
+            wipe_dir(os.path.join(self.duster_path,'to_predict'))
+            
+        
+            os.makedirs(os.path.join(self.duster_path,'to_predict/All'), exist_ok=True)
+        
+            for file in df_pred.file_name.unique():
+                im = Image.open(self.test_directory + '/' + file)
+        
+                for name in df_pred['name'].unique():
+                    os.makedirs(os.path.join(self.duster_path, f'to_predict/{name}'), exist_ok=True)
+               
+                    for raw in df_pred[(df_pred['file_name']==file) & (df_pred['name']==name)][['box', 'id', 'name']].values:
+                        im.crop(raw[0].bounds).save(f'{self.duster_path}/to_predict/All/{raw[1]}.jpg','JPEG')
+                        im.crop(raw[0].bounds).save(f'{self.duster_path}/to_predict/{raw[2]}/{raw[1]}.jpg','JPEG')
+                im.close()
+            
+            
             list_classes = list(df_pred.name.unique())
             duster.load_duster_and_classify(self.duster_path, list_classes)
             dust = pd.read_csv(f'{self.duster_path}/dust.csv')
