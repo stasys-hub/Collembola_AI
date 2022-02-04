@@ -224,7 +224,7 @@ class collembola_ai:
         # Finding some dust using the trained rCNN model
         self.perform_inference_on_folder(inference_directory=self.dust_directory, imgtype = "jpg")
         
-        with open(os.path.join(self.dust_directory, f'{self.model_name}/inference.json'), 'r') as j:
+        with open(os.path.join(self.dust_directory, f'{self.model_name}/inferences.json'), 'r') as j:
             tdust = json.load(j)
                  
         df_dust = coco2df(tdust)
