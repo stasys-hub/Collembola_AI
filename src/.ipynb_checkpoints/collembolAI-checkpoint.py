@@ -559,7 +559,7 @@ def main():
 
     if args.evaluate:
         # start evaluation on My_Model.set
-        My_Model.start_evaluation_on_test()
+        My_Model.start_evaluation_on_test(dusting=True)
     else:
         print("Skipping evaluation")
 
