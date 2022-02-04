@@ -474,21 +474,21 @@ class collembola_ai:
                         results_coco['images'] = results_coco['images'] + coco['images']
                         results_coco['annotations'] = results_coco['annotations'] + coco['annotations']
                         
-                        annotation_id = 0
-                        for a in results_coco['annotations']:
-                                a['id'] = annotation_id
-                                annotation_id += 1
-                        results_coco['type'] = 'instances'
-                        results_coco['licenses'] = ''
-                        results_coco['info'] = ''
+                annotation_id = 0
+                for a in results_coco['annotations']:
+                        a['id'] = annotation_id
+                        annotation_id += 1
+                results_coco['type'] = 'instances'
+                results_coco['licenses'] = ''
+                results_coco['info'] = ''
 
-                        with open(os.path.join(self.train_directory, "train.json"), 'r') as j:
-                            train = json.load(j)
-                        results_coco['categories'] = train['categories']
+                with open(os.path.join(self.train_directory, "train.json"), 'r') as j:
+                    train = json.load(j)
+                results_coco['categories'] = train['categories']
                         
                         
-                        with open(os.path.join(inference_out, "inferences.json"), 'w') as j:
-                            json.dump(results_coco, j, indent=4)
+                with open(os.path.join(inference_out, "inferences.json"), 'w') as j:
+                    json.dump(results_coco, j, indent=4)
                         
 
                 
