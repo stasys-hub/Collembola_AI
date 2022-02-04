@@ -32,6 +32,7 @@ from detectron2.evaluation import COCOEvaluator, inference_on_dataset
 from detectron2.structures import BoxMode
 import json
 import numpy as np
+import ntpath
 import os
 import pandas as pd
 import PIL
