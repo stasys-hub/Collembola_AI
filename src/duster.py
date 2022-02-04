@@ -89,6 +89,7 @@ def get_image_datagen():
         zoom_range=0.2,
         horizontal_flip=True,
         fill_mode='nearest')
+    
     test_datagen = ImageDataGenerator(rescale=rescale)
     
     return train_datagen, test_datagen
@@ -149,7 +150,7 @@ def train_duster(duster_path, train_directory):
         model.fit(
             train_generator,
             steps_per_epoch= len(train_generator.classes) // batch_size,
-            epochs=50,
+            epochs=5,
             validation_steps= len(validation_generator.classes) // batch_size)
     
         model.save_weights(os.path.join(duster_path,f'{ncls}.h5'))
