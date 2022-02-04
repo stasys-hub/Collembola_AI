@@ -115,7 +115,7 @@ def draw_coco_bbox(coco, out_dir, coco_dir, prefix='annotated', line_width=10, f
         coco_df['name'] = coco_df['name'] + ' ' + round(coco_df['score'], 2).astype(str)
         
     if 'is_false_positive' in coco_df.columns:
-        coco_df['name'] = coco_df['name'] + ' ' + ~coco_df['is_false_positive'].astype(str) + ' detection'
+        coco_df['name'] = coco_df['name'] + ' ' + (~coco_df['is_false_positive']).astype(str) + ' detection'
     
     resh = lambda x : ((x[0],x[1]), (x[0]+x[2],x[1]+x[3]))
     coco_df['coordinates'] = coco_df['bbox'].apply(resh)
@@ -320,7 +320,7 @@ def make_a_random_box(max_ratio, min_ratio, max_length, min_length, img_width, i
     return rbox
 
 
-def extract_random_background_subpictures(coco_df, pictures_dir, num_subpict_per_pict=200, output_dir):
+def extract_random_background_subpictures(coco_df, pictures_dir, output_dir, num_subpict_per_pict=200):
     
     # Get min ratio and max ratio of annotation in the train set
     max_ratio = coco_df.bbox.apply(lambda x:x[3]/x[2]).max()
@@ -348,3 +348,60 @@ def extract_random_background_subpictures(coco_df, pictures_dir, num_subpict_per
                 bnum += 1
                 num_pict += 1
         print(f'{num_pict} written for {file}')
+
+def d2_instance2dict(d2_instance, image_id, file_name):
+    '''
+    Convert a detectron2 instance into a JSON serializable dict (COCO annotations format).
+    '''
+    instance = dict(d2_instance.get_fields())
+    instance['image_size'] = d2_instance.image_size
+    
+    pb = list()
+    for i in instance['pred_boxes'].tensor:
+        box = [int(j) for j in np.round(i.numpy()).astype('int')]
+        pb.append(box)
+
+    instance['pred_boxes'] = pb
+    instance['scores'] = [round(float(i), 4) for i in instance['scores'].numpy()]
+    instance['pred_classes'] = [int(i) for i in list(instance['pred_classes'].numpy())]
+
+    annotations = list()
+    annot_id = 0
+    for v in list(zip(instance['pred_boxes'], instance['scores'], instance['pred_classes'])):
+        annotations.append(
+                {'id': annot_id,
+                 'image_id': image_id, 
+                 'bbox': [v[0][0], v[0][1], v[0][2]-v[0][0], v[0][3]-v[0][1]], 
+                 'score': v[1], 
+                 'category_id': v[2]+1,
+                 'iscrowd':0,
+                 'segmentation': []}
+                )
+        annot_id += 1
+    images = list()
+    images.append(
+            {'file_name': file_name,
+             'height': d2_instance.image_size[0],
+             'width': d2_instance.image_size[1],
+             'id': image_id}
+            )
+
+    return {'annotations': annotations, 'images':images}
+
+def cocoj_get_categories(cocojson):
+    """ Input is path to a coco (json) file. Return a dictionnary category_id : category_name """
+    with open(cocojson, 'r') as f:
+        res = {i['id']: i['name'] for i in json.load(f)['categories']}
+        return res
+
+    
+def crop_annotations(cocodf, input_dir, output_dir):
+    for name in cocodf.name.unique():     
+        os.makedirs(os.path.join(output_dir, name), exist_ok=True)   
+        
+    for file in cocodf.file_name.unique():
+        im = Image.open(os.path.join(input_dir, file))
+        for raw in cocodf[cocodf['file_name']==file][['box', 'id', 'name']].values:
+            im.crop(raw[0].bounds).save(os.path.join(output_dir, f'{raw[2]}/{raw[1]}.jpg'),'JPEG')
+        im.close()
+

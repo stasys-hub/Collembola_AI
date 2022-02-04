@@ -22,6 +22,7 @@ from tensorflow.keras.preprocessing.image import ImageDataGenerator, array_to_im
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Conv2D, MaxPooling2D
 from tensorflow.keras.layers import Activation, Dropout, Flatten, Dense
+from cocosets_utils import coco2df, crop_annotations
 
 PIL.Image.MAX_IMAGE_PIXELS = 500000000
 
@@ -32,39 +33,49 @@ def dump_training_set(train_directory, dust_directory, duster_path, df_train, df
     Subpictures are saved as jpeg in the 'duster' directory tree
     '''
     
-    # Extracting animal subpictures
-    for file in df_train.file_name.unique():
-        im = Image.open(train_directory + '/' + file)
-        for raw in df_train[df_train['file_name']==file][['box', 'id']].values:
+    # Write train subpictures from each animal classes
+    def wipe_dir(path):
+        if os.path.exists(path) and os.path.isdir(path):
+            shutil.rmtree(path)
             
-            os.makedirs(f'{duster_path}/train/Animal', exist_ok=True)
-            im.crop(raw[0].bounds).save(f'{duster_path}/train/{raw[1]}.jpg','JPEG')        
-        im.close()
-        
-    # Extracting dust subpictures
-    for file in df_dust.file_name.unique():
-        im = Image.open(dust_directory + '/' + file)
-        for raw in df_dust[df_dust['file_name']==file][['box', 'id']].values:
-            os.makedirs(f'{duster_path}/train/Dust', exist_ok=True)
-            im.crop(raw[0].bounds).save(f'{duster_path}/dust/{raw[1]}.jpg','JPEG')        
-        im.close()           
+    duster_train_dir = os.path.join(duster_path, 'train')
+    duster_train_all_dir = os.path.join(duster_train_dir, 'All')
+    duster_val_dir = os.path.join(duster_path, 'validation')
+    duster_val_all_dir = os.path.join(duster_val_dir, 'All')
 
-    # Reserving 20% of the animal and dust subpictures for model validation
-    animals_list= list(Path(f'{duster_path}/train').rglob('*.jpg'))    
-    random.shuffle(animals_list)
-    num_val = len(animals_list) * 20 / 100
-    os.makedirs(f'{duster_path}/validation/Animal', exist_ok=True)
-    for i in animals_list[:num_val]:
-        shutil.move(i, f'{duster_path}/validation/Animal/{ntpath.basename(i)}')
-        
-    dust_list= list(Path(f'{duster_path}/dust').rglob('*.jpg'))        
-    random.shuffle(dust_list)
-    num_val = len(dust_list) * 20 / 100
-    os.makedirs(f'{duster_path}/validation/Dust', exist_ok=True)
-    for i in dust_list[:num_val]:
-        shutil.move(i, f'{duster_path}/validation/Dust/{ntpath.basename(i)}')    
+    wipe_dir(duster_train_dir)
+    crop_annotations(df_train, train_directory, duster_train_dir)
 
-    
+    #with open(os.path.join(dust_directory, 'inference.json'), 'r') as j:
+    #    dust = coco2df(json.load(j))
+    # df_dust['name'] = 'Dust'
+
+    crop_annotations(dust, dust_directory, duster_train_dir)
+        
+    wipe_dir(duster_val_dir)
+
+    os.makedirs(duster_train_all_dir, exist_ok=True)
+    os.makedirs(duster_val_all_dir, exist_ok=True)
+
+    for name in list(train['name'].unique()) + ['Dust']:
+
+        class_file_list = list(Path(os.path.join(duster_train_dir, name)).rglob('*.jpg'))
+        random.shuffle(class_file_list)
+        num_val = int(len(class_file_list) * 20 / 100)
+        os.makedirs(os.path.join(duster_val_dir, name), exist_ok=True)
+        for i in class_file_list[:num_val]:
+            if name != 'Dust':
+                shutil.copy(i, os.path.join(duster_val_dir, f'{name}/{ntpath.basename(i)}'))
+                shutil.move(i, os.path.join(duster_val_all_dir, ntpath.basename(i)))
+            if name == 'Dust':
+                shutil.move(i, os.path.join(duster_val_dir, f'{name}/{ntpath.basename(i)}'))
+            
+        if name != 'Dust':
+            remains_class_file = list(Path(os.path.join(duster_train_dir, name)).rglob('*.jpg'))
+            for i in remains_class_file:
+                shutil.copy(i, os.path.join(duster_train_all_dir, ntpath.basename(i)))
+
+                
 def get_image_datagen():
     
     rescale=1./255   
@@ -110,64 +121,74 @@ def model_configure():
     
     return model
 
+def train_duster(duster_path, train_directory):
+    
+    classes = ['All'] + list(cocoj_get_categories(os.path.join(train_directory, 'train.json')).values())
+    
+    for ncls in classes:
+    
+        batch_size = 16
+        train_datagen, test_datagen = get_image_datagen()
 
-def train_duster(duster_path):
+        train_generator = train_datagen.flow_from_directory(
+            os.path.join(duster_path, 'train'),  
+            classes=[ncls,'Dust'],
+            target_size=(150, 150),
+            batch_size=batch_size,
+            class_mode='binary')
     
-    batch_size = 16
-    train_datagen, test_datagen = get_image_datagen()
-
-    train_generator = train_datagen.flow_from_directory(
-        f'{duster_path}/train',  
-        classes=['Animal','Dust'],
-        target_size=(150, 150),
-        batch_size=batch_size,
-        class_mode='binary')
+        validation_generator = test_datagen.flow_from_directory(
+            os.path.join(duster_path, 'validation'),
+            classes=[ncls,'Dust'],
+            target_size=(150, 150),
+            batch_size=batch_size,
+            class_mode='binary')
     
-    validation_generator = test_datagen.flow_from_directory(
-        f'{duster_path}/validation',
-        classes=['Animal','Dust'],
-        target_size=(150, 150),
-        batch_size=batch_size,
-        class_mode='binary')
+        model = model_configure()    
+        model.fit_generator(
+            train_generator,
+            steps_per_epoch=2000 // batch_size,
+            epochs=50,
+            validation_steps=800 // batch_size)
     
-    model = model_configure()    
-    model.fit_generator(
-        train_generator,
-        steps_per_epoch=2000 // batch_size,
-        epochs=50,
-        validation_data=validation_generator,
-        validation_steps=800 // batch_size)
+        model.save_weights(os.path.join(duster_path,f'{ncls}.h5'))
     
-    model.save_weights(f'{duster_path}/dust.h5')
     
-def load_duster_and_classify(model_weights, duster_path):
+def load_duster_and_classify(duster_path, list_classes):
     '''
     The trained duster will classifiy the pictures in the duster_path in the subfolder 'to_predict'
     Results are written in the dust.csv
     '''
-    batch_size = 16
     
-    model = model_configure()
-    model.load_weights(f'{duster_path}/dust.h5')
+    results = pd.DataFrame()
     
-    train_datagen, test_datagen = get_image_datagen()
+    for ncls in list_classes:
     
-    test_generator = test_datagen.flow_from_directory(
-        duster_path,
-        classes=['unknown'],
-        class_mode=None,
-        shuffle=False,
-        target_size=(150, 150),
-        batch_size=batch_size)
+        model = model_configure()
+        model.load_weights(f'{duster_path}/{ncls}.h5')
     
-    y_pred = [1 if p[0] > 0.5 else 0 for p in y ]
-    class_indices = {0: 'Animal', 1: 'Dust'}
-    y_class = [class_indices[i] for i in y_pred]
-    labels_files = list(zip(y_class, test_generator.filenames))
+        train_datagen, test_datagen = get_image_datagen()
+    
+        test_generator = test_datagen.flow_from_directory(
+            f'{duster_path}/to_predict',
+            classes=[ncls],
+            class_mode=None,
+            shuffle=False,
+            target_size=(150, 150),
+            batch_size=16)
+    
+        y = model.predict(test_generator, verbose=1)
+    
+        y_pred = [1 if p[0] > 0.5 else 0 for p in y ]
+        class_indices = {0: ncls, 1: 'Dust'}
+        y_class = [class_indices[i] for i in y_pred]
+        labels_files = list(zip(y_class, test_generator.filenames))
 
-    df = pd.DataFrame(labels_files, columns=['dust', 'id'])
-    df['id'] = df.id.str.replace('unknown/', '').str.replace('.jpg', '')
+        df = pd.DataFrame(labels_files, columns=['dust', 'id'])
+        df['id'] = df.id.str.replace(f'{ncls}/', '').str.replace('.jpg', '')
+        
+        results = pd.concat([results, df], axis=0)
     
-    df.to_csv(f'{duster_path}/dust.csv', index=False)
+    results.to_csv(f'{duster_path}/dust.csv', index=False)
     
     return df

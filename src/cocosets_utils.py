@@ -115,7 +115,7 @@ def draw_coco_bbox(coco, out_dir, coco_dir, prefix='annotated', line_width=10, f
         coco_df['name'] = coco_df['name'] + ' ' + round(coco_df['score'], 2).astype(str)
         
     if 'is_false_positive' in coco_df.columns:
-        coco_df['name'] = coco_df['name'] + ' ' + ~coco_df['is_false_positive'].astype(str) + ' detection'
+        coco_df['name'] = coco_df['name'] + ' ' + (~coco_df['is_false_positive']).astype(str) + ' detection'
     
     resh = lambda x : ((x[0],x[1]), (x[0]+x[2],x[1]+x[3]))
     coco_df['coordinates'] = coco_df['bbox'].apply(resh)
@@ -393,3 +393,15 @@ def cocoj_get_categories(cocojson):
     with open(cocojson, 'r') as f:
         res = {i['id']: i['name'] for i in json.load(f)['categories']}
         return res
+
+    
+def crop_annotations(cocodf, input_dir, output_dir):
+    for name in cocodf.name.unique():     
+        os.makedirs(os.path.join(output_dir, name), exist_ok=True)   
+        
+    for file in cocodf.file_name.unique():
+        im = Image.open(os.path.join(input_dir, file))
+        for raw in cocodf[cocodf['file_name']==file][['box', 'id', 'name']].values:
+            im.crop(raw[0].bounds).save(os.path.join(output_dir, f'{raw[2]}/{raw[1]}.jpg'),'JPEG')
+        im.close()
+

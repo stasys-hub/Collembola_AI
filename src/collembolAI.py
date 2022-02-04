@@ -212,29 +212,31 @@ class collembola_ai:
         print("\n---------------Finished Training---------------")
         
         
-    def start_training_duster(self, dedup_thresh=0.15, print_stuff=True):
-        '''This function will configure Detectron with your input Parameters and start the Training.
-        HINT: If you want to check your Parameters before training use "print_model_values"'''
+    def start_training_duster(self):
+        '''This function will train the duster (CNN binary classifier to recognize dust or other non animal object)'''
                 
         with open(os.path.join(self.train_directory, "train.json"), 'r') as j:
             train =  json.load(j)
             df_train = coco2df(train)
-            df_train['id_train'] = df_train['id']
+            #df_train['id_train'] = df_train['id']
             
         ######  
         # Finding some dust using the trained rCNN model
         self.perform_inference_on_folder(inference_directory=self.dust_directory, imgtype = "jpg")
                 
         tdust = testresults2coco(self.test_directory, self.output_directory, write=True)  
-        df_dust = coco2df(tdust)   
+        df_dust = coco2df(tdust)
+        df_dust['name'] = 'Dust'
     
-        # Grabing some pieces of background in the train set
-        extract_random_background_subpictures(df_train, self.train_directory, f'{self.duster_path}/train/Dust', num_subpict_per_pict=200)
+        # Grabing some pieces of background in the train set (optional, currently no longer in use)
+        # extract_random_background_subpictures(df_train, self.train_directory, f'{self.duster_path}/train/Dust', num_subpict_per_pict=200)
         
         print('Preparing the duster training and validation data')
+        
+        
         duster.dump_training_set(self.train_directory, self.dust_directory, self.duster_path, df_train, df_dust)
         print('Training and validating the duster')
-        duster.train_duster(self.duster_path)
+        duster.train_duster(self.duster_path, self.train_directory)
 
         print('duster trained')
         
@@ -377,8 +379,8 @@ class collembola_ai:
         # Plotting the confusion matrices
         #------------------------------------------------------------------------------------------------
         # 1. CM including only the detected true label
-        mcm = confusion_matrix(pairs.dropna().name_x, pairs.dropna().name_y.fillna('NaN'), labels = pairs.dropna().name_x.unique())
-        plot_confusion_matrix(mcm, pairs.dropna().name_x.unique(), normalize=False,
+        mcm = confusion_matrix(pairs.dropna().name_true, pairs.dropna().name_pred.fillna('NaN'), labels = pairs.dropna().name_true.unique())
+        plot_confusion_matrix(mcm, pairs.dropna().name_true.unique(), normalize=False,
                 write=os.path.join(self.output_directory, "test_results/cm_onlydetected.png"))
         
         # 2. CM including only the detected true label, normalized
@@ -386,18 +388,18 @@ class collembola_ai:
         # Thus I normalize the matrix here before plotting and don't use the option
         mcm = mcm.astype('float') / mcm.sum(axis=1)[:, np.newaxis] * 100
         mcm = mcm.round(1)
-        plot_confusion_matrix(mcm, pairs.dropna().name_x.unique(), normalize=False, 
+        plot_confusion_matrix(mcm, pairs.dropna().name_true.unique(), normalize=False, 
                 write=os.path.join(self.output_directory, "test_results/cm_norm_onlydetected.png"))
         
         # 3. CM including only the undetected true label (Nan)
-        mcm = confusion_matrix(pairs.name_x.fillna('NaN'), pairs.name_y.fillna('NaN'), labels = pairs.fillna('NaN').name_x.unique())
-        plot_confusion_matrix(mcm, np.append(pairs.name_x.unique(), 'NaN'), normalize=False,
+        mcm = confusion_matrix(pairs.name_true.fillna('NaN'), pairs.name_pred.fillna('NaN'), labels = pairs.fillna('NaN').name_true.unique())
+        plot_confusion_matrix(mcm, np.append(pairs.name_true.unique(), 'NaN'), normalize=False,
                 write=os.path.join(self.output_directory, "test_results/cm_inclNaN.png"))
         
         # 4. CM including only the undetected true label (Nan), normalized
         mcm = mcm.astype('float') / mcm.sum(axis=1)[:, np.newaxis] * 100
         mcm = np.nan_to_num(mcm.round(1))
-        plot_confusion_matrix(mcm, pairs.fillna('NaN').name_x.unique(), normalize=False, 
+        plot_confusion_matrix(mcm, pairs.fillna('NaN').name_true.unique(), normalize=False, 
                 write=os.path.join(self.output_directory, "test_results/cm_norm_inclNaN.png"))     
 
         print("\n---------------Finished Evaluation---------------")
@@ -468,6 +470,8 @@ class collembola_ai:
 
                         results_coco['images'] = results_coco['images'] + coco['images']
                         results_coco['annotations'] = results_coco['annotations'] + coco['annotations']
+                        results_coco['annotations'].reset_index(drop=True, inplace=True)
+                        results_coco['annotations']['id'] = results_coco['annotations'].index
                         results_coco['type'] = 'instances'
                         results_coco['licenses'] = ''
                         results_coco['info'] = ''
@@ -476,7 +480,8 @@ class collembola_ai:
                             train = json.load(j)
                         results_coco['categories'] = train['categories']
                         
-                        with open(os.path.join(inference_out, "Inferences.json"), 'w') as j:
+                        
+                        with open(os.path.join(inference_out, "inferences.json"), 'w') as j:
                             json.dump(results_coco, j, indent=4)
                         
 
@@ -541,7 +546,7 @@ def main():
               
     if args.train_duster:
         # start training 
-        My_Model.start_training_duster(dedup_thresh=0.15, print_stuff=True)
+        My_Model.start_training_duster()
     else:
         print("Skipping duster training")
 
