@@ -13,6 +13,7 @@ The following code is adapted from https://blog.keras.io/building-powerful-image
 """
 import os
 import ntpath
+import path
 import pandas as pd
 import PIL
 import random
