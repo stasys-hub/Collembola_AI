@@ -36,6 +36,7 @@ import ntpath
 import os
 import pandas as pd
 import PIL
+
 from sklearn.metrics import confusion_matrix
 from third_party_utils import plot_confusion_matrix
 import warnings
@@ -320,7 +321,7 @@ class collembola_ai:
             os.makedirs(os.path.join(self.duster_path,'to_predict/All'), exist_ok=True)
         
             for file in df_pred.file_name.unique():
-                im = Image.open(self.test_directory + '/' + file)
+                im = PIL.Image.open(self.test_directory + '/' + file)
         
                 for name in df_pred['name'].unique():
                     os.makedirs(os.path.join(self.duster_path, f'to_predict/{name}'), exist_ok=True)
