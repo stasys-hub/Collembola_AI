@@ -50,7 +50,7 @@ def dump_training_set(train_directory, dust_directory, duster_path, df_train, df
     #    dust = coco2df(json.load(j))
     # df_dust['name'] = 'Dust'
 
-    crop_annotations(dust, dust_directory, duster_train_dir)
+    crop_annotations(df_dust, dust_directory, duster_train_dir)
         
     wipe_dir(duster_val_dir)
 
