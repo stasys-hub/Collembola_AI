@@ -36,6 +36,7 @@ import ntpath
 import os
 import pandas as pd
 import PIL
+import shutil
 
 from sklearn.metrics import confusion_matrix
 from third_party_utils import plot_confusion_matrix
