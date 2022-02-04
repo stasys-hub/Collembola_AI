@@ -473,8 +473,11 @@ class collembola_ai:
 
                         results_coco['images'] = results_coco['images'] + coco['images']
                         results_coco['annotations'] = results_coco['annotations'] + coco['annotations']
-                        results_coco['annotations'].reset_index(drop=True, inplace=True)
-                        results_coco['annotations']['id'] = results_coco['annotations'].index
+                        
+                        annotation_id = 0
+                        for a in results_coco['annotations']:
+                                a['id'] = annotation_id
+                                annotation_id += 1
                         results_coco['type'] = 'instances'
                         results_coco['licenses'] = ''
                         results_coco['info'] = ''
