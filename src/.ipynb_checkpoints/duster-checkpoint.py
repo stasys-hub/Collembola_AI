@@ -57,7 +57,7 @@ def dump_training_set(train_directory, dust_directory, duster_path, df_train, df
     os.makedirs(duster_train_all_dir, exist_ok=True)
     os.makedirs(duster_val_all_dir, exist_ok=True)
 
-    for name in list(train['name'].unique()) + ['Dust']:
+    for name in list(df_train['name'].unique()) + ['Dust']:
 
         class_file_list = list(Path(os.path.join(duster_train_dir, name)).rglob('*.jpg'))
         random.shuffle(class_file_list)
