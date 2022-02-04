@@ -20,7 +20,7 @@ from cocosets_utils import testresults2coco, coco2df, draw_coco_bbox, \
                            deduplicate_overlapping_preds, \
                            match_true_n_pred_box, d2_instance2dict
 import cv2
-from duster import *
+import duster
 from detectron2.modeling import build_model
 from detectron2 import model_zoo
 from detectron2.data import DatasetCatalog, MetadataCatalog, build_detection_test_loader
