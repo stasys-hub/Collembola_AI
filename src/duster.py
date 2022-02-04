@@ -13,7 +13,7 @@ The following code is adapted from https://blog.keras.io/building-powerful-image
 """
 import os
 import ntpath
-from path import Path
+from pathlib import Path
 import pandas as pd
 import PIL
 import random
