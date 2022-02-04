@@ -223,8 +223,10 @@ class collembola_ai:
         ######  
         # Finding some dust using the trained rCNN model
         self.perform_inference_on_folder(inference_directory=self.dust_directory, imgtype = "jpg")
-                
-        tdust = testresults2coco(self.test_directory, self.output_directory, write=True)  
+        
+        with open(os.path.join(self.dust_directory, f'{self.model_name}/inference.json'), 'r') as j:
+            tdust = json.load(j)
+                 
         df_dust = coco2df(tdust)
         df_dust['name'] = 'Dust'
     
@@ -303,7 +305,8 @@ class collembola_ai:
 
         # Dusting (identifying and removing False Positive ('dust'))
         if dusting:   
-            duster.load_duster_and_classify(self.duster_path)
+            list_classes = list(df_pred.name.unique().values)
+            duster.load_duster_and_classify(self.duster_path, list_classes)
             dust = pd.read_csv(f'{self.duster_path}/dust.csv')
             df_pred = df_pred.merge(dust, on='id')
             df_pred = df_pred[df_pred['dust'] != 'Dust']
