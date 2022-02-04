@@ -123,7 +123,7 @@ def model_configure():
     
     return model
 
-def train_duster(duster_path, train_directory):
+def train_duster(duster_path, train_directory, epochs=50):
     
     classes = ['All'] + list(cocoj_get_categories(os.path.join(train_directory, 'train.json')).values())
     
@@ -150,7 +150,7 @@ def train_duster(duster_path, train_directory):
         model.fit(
             train_generator,
             steps_per_epoch= len(train_generator.classes) // batch_size,
-            epochs=5,
+            epochs=epochs,
             validation_steps= len(validation_generator.classes) // batch_size)
     
         model.save_weights(os.path.join(duster_path,f'{ncls}.h5'))

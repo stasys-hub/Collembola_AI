@@ -213,7 +213,7 @@ class collembola_ai:
         print("\n---------------Finished Training---------------")
         
         
-    def start_training_duster(self):
+    def start_training_duster(self, epochs=50):
         '''This function will train the duster (CNN binary classifier to recognize dust or other non animal object)'''
                 
         with open(os.path.join(self.train_directory, "train.json"), 'r') as j:
@@ -239,7 +239,7 @@ class collembola_ai:
         
         duster.dump_training_set(self.train_directory, self.dust_directory, self.duster_path, df_train, df_dust)
         print('Training and validating the duster')
-        duster.train_duster(self.duster_path, self.train_directory)
+        duster.train_duster(self.duster_path, self.train_directory, epochs=50)
 
         print('duster trained')
         
@@ -306,7 +306,7 @@ class collembola_ai:
 
         # Dusting (identifying and removing False Positive ('dust'))
         if dusting:   
-            list_classes = list(df_pred.name.unique().values)
+            list_classes = list(df_pred.name.unique())
             duster.load_duster_and_classify(self.duster_path, list_classes)
             dust = pd.read_csv(f'{self.duster_path}/dust.csv')
             df_pred = df_pred.merge(dust, on='id')
@@ -553,7 +553,7 @@ def main():
               
     if args.train_duster:
         # start training 
-        My_Model.start_training_duster()
+        My_Model.start_training_duster(epochs=50)
     else:
         print("Skipping duster training")
 
