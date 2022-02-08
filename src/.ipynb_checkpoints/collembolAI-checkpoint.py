@@ -36,6 +36,7 @@ import ntpath
 import os
 import pandas as pd
 import PIL
+import shutil
 
 from sklearn.metrics import confusion_matrix
 from third_party_utils import plot_confusion_matrix
@@ -122,6 +123,10 @@ class collembola_ai:
     def print_model_values(self):
         """This function will print all model parameters which can be set by the user. It is useful if you have path problems.
         Hint: On Windows you will probably have to adjust your path because of backslashes"""
+        
+        ###
+        # SAHI: may require some update ?
+        ###
 
         print("# --------------- Model Parameters ---------------- #\n")
         print(f'Variable           \tValue\n')
@@ -142,6 +147,10 @@ class collembola_ai:
         """This function loads the train.json file and registers your training data using the \"register_coco_instances\" function of Detectron2
         IMPORTANT: Currently it is necessary to use this function before performing inference with a trained model """
 
+        ###
+        # SAHI: may require some update ?
+        ###
+        
         try:
             # read train.json file
 
@@ -190,7 +199,12 @@ class collembola_ai:
     def start_training(self):
         '''This function will configure Detectron with your input Parameters and start the Training.
         HINT: If you want to check your Parameters before training use "print_model_values"'''
-
+        
+        ##
+        ## UPDATE WITH THE TRAINING SCRIPT USING SAHI
+        ##
+        
+        
         # load a model from the modelzoo and initialize model weights and set our model params
         cfg = get_cfg()
         cfg.merge_from_file(model_zoo.get_config_file(self.model_zoo_config))
@@ -247,7 +261,11 @@ class collembola_ai:
 
     def start_evaluation_on_test(self, dedup_thresh=0.15, verbose=True, dusting=False):
         '''This function will run the trained model on the test dataset (test/test.json)'''
-
+        
+        ##
+        ## UPDATE WITH THE TEST INFERENCE SCRIPT USING SAHI
+        ##
+        
         # RUNNING INFERENCE
         #================================================================================================
         # Creating the output directories tree
@@ -295,6 +313,14 @@ class collembola_ai:
         print(inference_on_dataset(trainer.model, val_loader, evaluator))
         #================================================================================================
         
+        ####
+        # SAHI: At this stage, the json output of SAHI should be in the output_test_res directory, with the
+        # name coco_instances_results.json (if under a different name, then other functions must be adapted)
+        ####
+        
+        ####
+        # SAHI :If above condition is met, the rest of the test pipeline does not need to be modified
+        ####
         
         # REPORTING
         #================================================================================================
@@ -442,6 +468,11 @@ class collembola_ai:
         
         if not inference_directory:
             inference_directory = self.inference_directory
+            
+        ####
+        # SAHI : Adapt with SAHI script for prediction on new images.
+        ####
+        
 
         try:
             # reload the model
@@ -469,6 +500,13 @@ class collembola_ai:
             print(e)
             print("Something went wrong while loading the model configuration. Please Check your path\'")
             raise
+            
+            
+        ####
+        # SAHI : In the block below is the loop that used to execute prediction on each new images (looping on images)
+        # then collecting output and concatenating it in a single json file following COCO format
+        # Probably need to be adapted with SAHI scripts.
+        ####
  
         inference_out = os.path.join(inference_directory, self.model_name)          
         n_files = len(([f for f in os.listdir(inference_directory) if f.endswith(imgtype)]))
@@ -483,6 +521,8 @@ class collembola_ai:
                 warnings.simplefilter('ignore')
                 os.makedirs(inference_out, exist_ok=True)
                 results_coco={'images': [], 'annotations': []}
+                
+                # Loop for predicting on eahc images starts
                 for i in os.listdir(inference_directory):
                     if i.endswith(imgtype):
                         file_path = os.path.join(inference_directory, i)
@@ -500,7 +540,8 @@ class collembola_ai:
 
                         results_coco['images'] = results_coco['images'] + coco['images']
                         results_coco['annotations'] = results_coco['annotations'] + coco['annotations']
-                        
+                   
+                # Wrapping results in COCO JSON.
                 annotation_id = 0
                 for a in results_coco['annotations']:
                         a['id'] = annotation_id
