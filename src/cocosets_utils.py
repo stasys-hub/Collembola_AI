@@ -373,7 +373,7 @@ def d2_instance2dict(d2_instance, image_id, file_name):
                  'image_id': image_id, 
                  'bbox': [v[0][0], v[0][1], v[0][2]-v[0][0], v[0][3]-v[0][1]], 
                  'score': v[1], 
-                 'category_id': v[2]+1,
+                 'category_id': v[2],
                  'iscrowd':0,
                  'segmentation': []}
                 )
