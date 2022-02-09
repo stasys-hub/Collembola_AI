@@ -321,7 +321,7 @@ You may repeat the above steps in a second time to prepare a test set, or simply
 
 To select at random a given percentage of pictures to use as test, use the command:
 ```bash
-coco_set_utils.py --split 20 ./dataset.json.reviewed
+cocosets_utils.py --split dataset.json.reviewed --ratio 20
 ```
 <br/>
 it will move 20% of the pictures selected at random in a child 'test' folder and write a test.json COCO file, the remaining pictures are moved in a child 'train' folder along with a train.json COCO file.
@@ -329,7 +329,7 @@ it will move 20% of the pictures selected at random in a child 'test' folder and
 <br/>
 Alternatively, you can create the train and test folder yourself and dispatch the pictures manually. Then run the following command to obtain the reduced COCO file:
 ```bash
-coco_set_utils.py --split ./dataset.json.reviewed
+cocosets_utils.py --split ./dataset.json.reviewed
 ```
 
 At this point you can start to use CollembolAI.py as described in <strong>Usage</strong>

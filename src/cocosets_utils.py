@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 Project title:       CollembolAI
 Authors:             Stephan Weißbach, Stanislav Sys, Clément Schneider
@@ -9,16 +10,21 @@ Purpose:             a set of inhouse utilitary functions, related to operations
 Dependencies:        See ReadMe
 Last Update:         11.01.2021
 """
-
+import argparse
+import configparser
 from itertools import combinations, product
 import json
 import numpy as np
 import ntpath
+import shutil
+from pathlib import Path
 import os
 import pandas as pd
 from PIL import Image, ImageFont, ImageDraw, ImageEnhance
 from shapely.geometry import box
 import random
+import rglob
+import sys
 
 def testresults2coco(test_dir, inference_dir, write=False):
     '''
@@ -310,6 +316,13 @@ def mergecocos(coco1_i, coco2_i):
     
     return cocomerged
 
+def reduce_coco(coco, img_list):
+    id_img_list = [i['id'] for i in coco['images'] if i['file_name'] in img_list]
+    pcoco = json.loads(json.dumps(coco)) # = deep copy of the coco dictionnary
+    pcoco['images'] = [i for i in coco['images'] if i['file_name'] in img_list]
+    pcoco['annotations'] = [i for i in coco['annotations'] if i['image_id'] in id_img_list]
+    return pcoco
+
 
 def make_a_random_box(max_ratio, min_ratio, max_length, min_length, img_width, img_height):
     height = int(random.uniform(min_length, max_length))
@@ -405,3 +418,87 @@ def crop_annotations(cocodf, input_dir, output_dir):
             im.crop(raw[0].bounds).save(os.path.join(output_dir, f'{raw[2]}/{raw[1]}.jpg'),'JPEG')
         im.close()
 
+
+def main():
+    parser=argparse.ArgumentParser()
+   
+    parser.add_argument('--split', type=str, default=None,
+            help='''Splitting a COCO JSON file given in input. If --ratio is provided, images and splitted JSON will be moved accordingly to newly created train and test folder. If --ratio is not provided, the script will look for pictures in pre-existing test and train folders and split the COCO JSON accordingly''') 
+
+    parser.add_argument('--ratio', type=int, default=0,
+                        help='''Percentage of the total dataset that will go in the test set when using the splitting function. Remaining goes in the train set.''')
+
+    args=parser.parse_args()
+    
+    if args.split:
+        
+        dirname = Path(args.split).parents[0]      
+        with open(args.split, 'r') as j:
+            coco = json.load(j)
+        
+    
+        if args.ratio > 0 and args.ratio < 100:
+            
+            print(f'Splitting: {args.ratio} % of the pictures are going to the test split')          
+            img_list = [i['file_name'] for i in coco['images']]
+            cut = int(len(img_list) * args.ratio / 100)
+            random.shuffle(img_list)
+            test_coco = reduce_coco(coco, img_list[:cut])
+            train_coco = reduce_coco(coco, img_list[cut:])
+            
+            print('Moving files to test dir')
+            
+            os.makedirs(f'{dirname}/test', exist_ok=True)
+            with open(f'{dirname}/test/test.json', 'w') as j:
+                json.dump(test_coco, j, indent=4)
+            for img in img_list[:cut]:
+                shutil.move(f'{dirname}/{img}', f'{dirname}/test/{img}')
+                
+            print('Moving files to train dir')
+            os.makedirs(f'{dirname}/train', exist_ok=True)
+            with open(f'{dirname}/train/train.json', 'w') as j:
+                json.dump(train_coco, j, indent=4)     
+            for img in img_list[cut:]:
+                shutil.move(f'{dirname}/{img}', f'{dirname}/train/{img}')
+                
+            print('Done')
+            sys.exit()
+            
+        else:
+            print('No valid split ratio provided. Will look for pre-existing train and test folders')
+            
+            try:
+                test_img_list = [i.name for i in Path(dirname + '/test.').rglob('*.jpg')]
+                if len(test_img_list) <= 0:
+                    print('Nothing in the test folder')
+                else:
+                    test_coco = reduce_coco(coco, test_img_list)
+                    print('Writing test.json in test dir')
+                    with open(f'{dirname}/test/test.json', 'w') as j:
+                        json.dump(test_coco, j, indent=4)   
+            except:
+                print('No valid test folder')
+                
+                
+            try:
+                train_img_list = [i.name for i in Path(dirname + '/train.').rglob('*.jpg')]
+                if len(train_img_list) <= 0:
+                    print('Nothing in the test folder')
+                else:
+                    test_coco = reduce_coco(coco, train_img_list)
+                    print('Writing train.json in test dir')
+                    with open(f'{dirname}/train/train.json', 'w') as j:
+                        json.dump(train_coco, j, indent=4)   
+            except:
+                print('No valid test folder')
+                
+            print('Done')
+            sys.exit()
+
+
+
+
+
+
+if __name__ == "__main__":
+    main()
