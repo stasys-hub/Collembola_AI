@@ -81,6 +81,19 @@ def coco2df(coco):
 
     return coco_df
 
+def df2coco(df):
+    '''
+    Take a dataframe and make it into a coco instance, provided the correct fields are present
+    '''
+    coco = dict()
+    coco['images'] = df[['file_name', 'height', 'width', 'image_id']].rename(columns={'image_id':'id'}).drop_duplicates(subset=['file_name']).to_dict(orient="record")
+    coco['annotations'] = df[['area', 'iscrowd', 'bbox', 'category_id', 'segmentation', 'image_id', 'id']].to_dict(orient="record")
+    coco['categories'] = df[['supercategory', 'category_id', 'name']].rename(columns={'category_id':'id'}).drop_duplicates(subset=['name']).to_dict(orient="record")
+    coco['type'] = 'instances'
+    coco['licenses'] = ''
+    coco['info'] = ''
+    return coco
+
 def draw_coco_bbox(coco, out_dir, coco_dir, prefix='annotated', line_width=10, fontsize = 80, fontYshift = -50):
     '''
     Detectron2 module for writing annotated pictures was not so explicit to me, and default output not so pretty.

@@ -18,7 +18,8 @@ import configparser
 
 from cocosets_utils import testresults2coco, coco2df, draw_coco_bbox, \
                            deduplicate_overlapping_preds, \
-                           match_true_n_pred_box, d2_instance2dict
+                           match_true_n_pred_box, d2_instance2dict, \
+                           df2coco
 import cv2
 import duster
 from detectron2.modeling import build_model
@@ -43,42 +44,6 @@ from third_party_utils import plot_confusion_matrix
 import warnings
 
 PIL.Image.MAX_IMAGE_PIXELS = 500000000
-
-# Please ensure the following structure for the working directory
-
-# working_directory ............. w
-# where a set of pictures for training or automatic annotating is deposited.
-# |
-# |-CAI.conf ................ configuration file.
-# |
-# |- -|
-#     |-train ............... contains the training set of pictures, with annotation in COCO format (train.json)
-#     |   |-img1.jpg
-#     |   |-img2.jpg
-#     |   |-[...]
-#     |   |-train.json
-#     |
-#     |-test ................ contains the testing set of pictures, with annotation in COCO format (test.json)
-#     |   |-img1.jpg
-#     |   |-img2.jpg
-#     |   |-[...]
-#     |   |-test.json
-#     |
-#     |-dust (optional)...... contains training set of background only pictures (no annotation needed).
-#     |   |-img1.jpg
-#     |   |-img2.jpg
-#     |   |-[...]
-#     | 
-#     |-inference(optional).. contains the set of pictures to annotate with the model
-#         |-img1.jpg
-#         |-img2.jpg
-#         |-[...]
-
-# train: annotated images for training
-# train.json: Annotations + path to images for all images stored in train (JSON/COCO format)
-# test: annotated images for model evaluation
-# test.json: like train.json but for test (JSON/COCO format) 
-# OOP Version of CollembolAI
 
 class collembola_ai:
 
@@ -118,7 +83,14 @@ class collembola_ai:
 
         # set gpu device to use
         self.gpu_num = int(gpu_num)
-        self.trainer = None        
+        self.trainer = None   
+        
+        # Using duster ?
+        if config['OPTIONAL']['duster'] == 'True':
+            self.duster = True
+        else:
+            self.duster = False  
+        self.dedup_thresh = float(config['OPTIONAL']['deduplication_iou_threshold'])
 
     def print_model_values(self):
         """This function will print all model parameters which can be set by the user. It is useful if you have path problems.
@@ -238,7 +210,7 @@ class collembola_ai:
             
         ######  
         # Finding some dust using the trained rCNN model
-        self.perform_inference_on_folder(inference_directory=self.dust_directory, imgtype = "jpg")
+        self.perform_inference_on_folder(inference_directory=self.dust_directory, imgtype = "jpg", dedup_thresh=0.999)
         
         with open(os.path.join(self.dust_directory, f'{self.model_name}/inferences.json'), 'r') as j:
             tdust = json.load(j)
@@ -257,6 +229,42 @@ class collembola_ai:
         duster.train_duster(self.duster_path, self.train_directory, epochs=50)
 
         print('duster trained')
+        
+        
+        
+    def start_dusting(self, df_pred, img_dir):
+        '''Dusting (identifying and removing False Positive ('dust'))'''
+                           
+        # Extracting subpictures from the predictions
+        print('Extracting and organizing the subpictures for dusting')
+            
+        def wipe_dir(path):
+            if os.path.exists(path) and os.path.isdir(path):
+                shutil.rmtree(path)
+        
+        wipe_dir(os.path.join(self.duster_path,'to_predict'))
+            
+        
+        os.makedirs(os.path.join(self.duster_path,'to_predict/All'), exist_ok=True)
+        
+        for file in df_pred.file_name.unique():
+            im = PIL.Image.open(img_dir + '/' + file)
+        
+            for name in df_pred['name'].unique():
+                os.makedirs(os.path.join(self.duster_path, f'to_predict/{name}'), exist_ok=True)
+               
+                for raw in df_pred[(df_pred['file_name']==file) & (df_pred['name']==name)][['box', 'id', 'name']].values:
+                    im.crop(raw[0].bounds).save(f'{self.duster_path}/to_predict/All/{raw[1]}.jpg','JPEG')
+                    im.crop(raw[0].bounds).save(f'{self.duster_path}/to_predict/{raw[2]}/{raw[1]}.jpg','JPEG')
+            im.close()
+            
+            
+        list_classes = list(df_pred.name.unique())
+        duster.load_duster_and_classify(self.duster_path, list_classes)
+        dust = pd.read_csv(f'{self.duster_path}/dust.csv')
+        df_pred = df_pred.merge(dust, on='id')
+        df_pred = df_pred[df_pred['dust'] != 'Dust']
+        return df_pred
         
 
     def start_evaluation_on_test(self, dedup_thresh=0.15, verbose=True, dusting=False):
@@ -333,37 +341,7 @@ class collembola_ai:
 
         # Dusting (identifying and removing False Positive ('dust'))
         if dusting:
-            
-                # Extracting subpictures from the predictions
-            print('Extracting and organizing the subpictures for dusting')
-            
-            def wipe_dir(path):
-                if os.path.exists(path) and os.path.isdir(path):
-                    shutil.rmtree(path)
-        
-            wipe_dir(os.path.join(self.duster_path,'to_predict'))
-            
-        
-            os.makedirs(os.path.join(self.duster_path,'to_predict/All'), exist_ok=True)
-        
-            for file in df_pred.file_name.unique():
-                im = PIL.Image.open(self.test_directory + '/' + file)
-        
-                for name in df_pred['name'].unique():
-                    os.makedirs(os.path.join(self.duster_path, f'to_predict/{name}'), exist_ok=True)
-               
-                    for raw in df_pred[(df_pred['file_name']==file) & (df_pred['name']==name)][['box', 'id', 'name']].values:
-                        im.crop(raw[0].bounds).save(f'{self.duster_path}/to_predict/All/{raw[1]}.jpg','JPEG')
-                        im.crop(raw[0].bounds).save(f'{self.duster_path}/to_predict/{raw[2]}/{raw[1]}.jpg','JPEG')
-                im.close()
-            
-            
-            list_classes = list(df_pred.name.unique())
-            duster.load_duster_and_classify(self.duster_path, list_classes)
-            dust = pd.read_csv(f'{self.duster_path}/dust.csv')
-            df_pred = df_pred.merge(dust, on='id')
-            df_pred = df_pred[df_pred['dust'] != 'Dust']
-        
+            df_pred = self.start_dusting(df_pred, self.test_directory)
         
         # Loading train set and test set in DataFrame
         with open(os.path.join(self.test_directory, "test.json"), 'r') as j:
@@ -462,7 +440,7 @@ class collembola_ai:
         
         #================================================================================================
 
-    def perform_inference_on_folder(self, inference_directory = None, imgtype = "jpg"):
+    def perform_inference_on_folder(self, inference_directory = None, imgtype = "jpg", dusting = False, dedup_thresh=dedup_thresh):
         '''This function can be used to perform inference on the unannotated data you want to classify.
            IMPORTANT: You still have to load a model using "load_train_test"'''
         
@@ -522,7 +500,7 @@ class collembola_ai:
                 os.makedirs(inference_out, exist_ok=True)
                 results_coco={'images': [], 'annotations': []}
                 
-                # Loop for predicting on eahc images starts
+                # Loop for predicting on each images starts
                 for i in os.listdir(inference_directory):
                     if i.endswith(imgtype):
                         file_path = os.path.join(inference_directory, i)
@@ -532,10 +510,10 @@ class collembola_ai:
                         v = Visualizer(im[:, :, ::-1], metadata=dataset_metadata_test, scale=1.)
                         instances = outputs["instances"].to("cpu")
                         coco = d2_instance2dict(instances, counter, ntpath.basename(i))
-                        v = v.draw_instance_predictions(instances)
-                        result = v.get_image()[:, :, ::-1]
-                        output_name = f"{inference_out}/annotated_{i}"
-                        write_res = cv2.imwrite(output_name, result)
+                        #v = v.draw_instance_predictions(instances)
+                        #result = v.get_image()[:, :, ::-1]
+                        #output_name = f"{inference_out}/annotated_{i}"
+                        #write_res = cv2.imwrite(output_name, result)
                         counter += 1
 
                         results_coco['images'] = results_coco['images'] + coco['images']
@@ -553,17 +531,22 @@ class collembola_ai:
                 with open(os.path.join(self.train_directory, "train.json"), 'r') as j:
                     train = json.load(j)
                 results_coco['categories'] = train['categories']
-                        
-                        
+                
+                
+                df_pred = deduplicate_overlapping_preds(coco2df(results_coco), dedup_thresh)
+                
+                if dusting:
+                    df_pred = self.start_dusting(results_coco, inference_directory)
+                                      
+                results_coco = df2coco(df_pred)
+                   
                 with open(os.path.join(inference_out, "inferences.json"), 'w') as j:
                     json.dump(results_coco, j, indent=4)
                         
 
-                
         except Exception as e:
             print(e)
             print("Something went wrong while performing inference on your data. Please check your path directory structure\nUse \"print_model_values\" for debugging")
-
 
 
 def main():
@@ -626,13 +609,13 @@ def main():
 
     if args.evaluate:
         # start evaluation on My_Model.set
-        My_Model.start_evaluation_on_test(dusting=True)
+        My_Model.start_evaluation_on_test(dedup_thresh=self.dedup_thresh, dusting=self.duster)
     else:
         print("Skipping evaluation")
 
     if args.annotate:
         # Run inference with your trained model on unlabeled data       
-        My_Model.perform_inference_on_folder(imgtype="jpg")
+        My_Model.perform_inference_on_folder(imgtype="jpg", dusting=self.duster, dedup_thresh=self.dedup_thresh)
     else:
         print("Nothing to annotate")
 

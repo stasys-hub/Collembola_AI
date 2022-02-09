@@ -94,7 +94,7 @@ duster = True
 
 1. describe the training set
 ```bash
-python3 collembolAI.py --describe template.conf
+python3 collembolAI.py -s template.conf
 ```
 <br/>
 2. training the detector/classificator model (SAHI/Detectron2)
