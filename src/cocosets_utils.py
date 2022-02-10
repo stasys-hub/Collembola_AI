@@ -162,6 +162,8 @@ def draw_coco_bbox(coco, out_dir, coco_dir, prefix='annotated', line_width=10, f
 
            
 def deduplicate_overlapping_preds(df_pred, IoU_threshold=0.7, area=1000000):
+    '''Identify overlapping annotations boxes in a dataframe created from  a coco instance, identify and remove duplicates based
+       on IoU threshold'''
     dedup_df = pd.DataFrame()
     for image_id in df_pred.image_id.unique():
         sdf_pred = df_pred[df_pred['image_id'] == image_id].copy()
@@ -183,6 +185,8 @@ def deduplicate_overlapping_preds(df_pred, IoU_threshold=0.7, area=1000000):
     return dedup_df
 
 def match_true_n_pred_box(df_ttruth, df_pred, IoU_threshold=0.4):
+    '''Match the ground truth annotations with the predicted annotations based on IoU, then merge ground truth
+     and prediction dataframe on shared annotation, and output the merged dataframe'''
     matched = pd.DataFrame()
     df_pred['id_pred'] = df_pred['id']
     df_pred['pred_box'] = df_pred['box']
@@ -224,7 +228,8 @@ def match_true_n_pred_box(df_ttruth, df_pred, IoU_threshold=0.4):
 
 def numerize_img_id(coco):
     '''
-    Input: coco instance (dict)
+    Input: coco instance (dict).
+    Reindex images in a coco instance
     coco instance is modified in-place
     '''
     # replace string image ids by integer ids
@@ -242,6 +247,7 @@ def numerize_img_id(coco):
 def numerize_annot_id(coco):
     '''
     Input: coco instance (dict)
+    Reindex annotations in a coco instance
     coco instance is modified in-place
     '''
     # reset annotation ids by integer ids and enforce numerical value on categories id, but only if numerical character
@@ -257,6 +263,7 @@ def numerize_annot_id(coco):
 def numerize_cat_id(coco):
     '''
     Input: coco instance (dict)
+    Reindex categories in a coco instance
     coco instance is modified in-place
     '''
     # enforce numerical value on categories id, but only if numerical character
@@ -269,6 +276,7 @@ def numerize_cat_id(coco):
 def trim_path_from_file_name(coco):
     '''
     Input: coco instance (dict)
+    Remove parents in images file_name (fixing the output of voc2coco.py)
     coco instance is modified in-place
     '''
     for i in coco['images']:
@@ -277,6 +285,7 @@ def trim_path_from_file_name(coco):
 def add_standard_field(coco):
     '''
     Input: coco instance (dict)
+    Add a bunch of empty fields, that are part of the coco format. May avoid some troubles with some downstream softwares later
     coco instance is modified in-place
     '''
     try: 
@@ -330,6 +339,8 @@ def mergecocos(coco1_i, coco2_i):
     return cocomerged
 
 def reduce_coco(coco, img_list):
+    '''Input a coco instance and a list of file_name (images). Will remove images and annotations from the coco
+    if NOT in img_list. Return a coco instance'''
     id_img_list = [i['id'] for i in coco['images'] if i['file_name'] in img_list]
     pcoco = json.loads(json.dumps(coco)) # = deep copy of the coco dictionnary
     pcoco['images'] = [i for i in coco['images'] if i['file_name'] in img_list]
@@ -338,6 +349,9 @@ def reduce_coco(coco, img_list):
 
 
 def make_a_random_box(max_ratio, min_ratio, max_length, min_length, img_width, img_height):
+    '''
+    No longer needed. Generate a random rectangle, within the dimension provided in img_widht and img_height
+    '''
     height = int(random.uniform(min_length, max_length))
     width = int(height * random.uniform(0.5, 1.5))
     x= int(random.uniform(0, img_width-width))
@@ -347,7 +361,9 @@ def make_a_random_box(max_ratio, min_ratio, max_length, min_length, img_width, i
 
 
 def extract_random_background_subpictures(coco_df, pictures_dir, output_dir, num_subpict_per_pict=200):
-    
+    '''
+    No longer needed. Creates a bunch of subpictures from picture annotated with coco, picking only background.
+    '''
     # Get min ratio and max ratio of annotation in the train set
     max_ratio = coco_df.bbox.apply(lambda x:x[3]/x[2]).max()
     min_ratio = coco_df.bbox.apply(lambda x:x[3]/x[2]).min()
@@ -422,6 +438,7 @@ def cocoj_get_categories(cocojson):
 
     
 def crop_annotations(cocodf, input_dir, output_dir):
+    """Export each annotation of a coco dataset in separate JPG. cocodf is a dataframe obtained with coco2df"""
     for name in cocodf.name.unique():     
         os.makedirs(os.path.join(output_dir, name), exist_ok=True)   
         
@@ -431,87 +448,3 @@ def crop_annotations(cocodf, input_dir, output_dir):
             im.crop(raw[0].bounds).save(os.path.join(output_dir, f'{raw[2]}/{raw[1]}.jpg'),'JPEG')
         im.close()
 
-
-def main():
-    parser=argparse.ArgumentParser()
-   
-    parser.add_argument('--split', type=str, default=None,
-            help='''Splitting a COCO JSON file given in input. If --ratio is provided, images and splitted JSON will be moved accordingly to newly created train and test folder. If --ratio is not provided, the script will look for pictures in pre-existing test and train folders and split the COCO JSON accordingly''') 
-
-    parser.add_argument('--ratio', type=int, default=0,
-                        help='''Percentage of the total dataset that will go in the test set when using the splitting function. Remaining goes in the train set.''')
-
-    args=parser.parse_args()
-    
-    if args.split:
-        
-        dirname = Path(args.split).parents[0]      
-        with open(args.split, 'r') as j:
-            coco = json.load(j)
-        
-    
-        if args.ratio > 0 and args.ratio < 100:
-            
-            print(f'Splitting: {args.ratio} % of the pictures are going to the test split')          
-            img_list = [i['file_name'] for i in coco['images']]
-            cut = int(len(img_list) * args.ratio / 100)
-            random.shuffle(img_list)
-            test_coco = reduce_coco(coco, img_list[:cut])
-            train_coco = reduce_coco(coco, img_list[cut:])
-            
-            print('Moving files to test dir')
-            
-            os.makedirs(f'{dirname}/test', exist_ok=True)
-            with open(f'{dirname}/test/test.json', 'w') as j:
-                json.dump(test_coco, j, indent=4)
-            for img in img_list[:cut]:
-                shutil.move(f'{dirname}/{img}', f'{dirname}/test/{img}')
-                
-            print('Moving files to train dir')
-            os.makedirs(f'{dirname}/train', exist_ok=True)
-            with open(f'{dirname}/train/train.json', 'w') as j:
-                json.dump(train_coco, j, indent=4)     
-            for img in img_list[cut:]:
-                shutil.move(f'{dirname}/{img}', f'{dirname}/train/{img}')
-                
-            print('Done')
-            sys.exit()
-            
-        else:
-            print('No valid split ratio provided. Will look for pre-existing train and test folders')
-            
-            try:
-                test_img_list = [i.name for i in Path(dirname + '/test.').rglob('*.jpg')]
-                if len(test_img_list) <= 0:
-                    print('Nothing in the test folder')
-                else:
-                    test_coco = reduce_coco(coco, test_img_list)
-                    print('Writing test.json in test dir')
-                    with open(f'{dirname}/test/test.json', 'w') as j:
-                        json.dump(test_coco, j, indent=4)   
-            except:
-                print('No valid test folder')
-                
-                
-            try:
-                train_img_list = [i.name for i in Path(dirname + '/train.').rglob('*.jpg')]
-                if len(train_img_list) <= 0:
-                    print('Nothing in the test folder')
-                else:
-                    test_coco = reduce_coco(coco, train_img_list)
-                    print('Writing train.json in test dir')
-                    with open(f'{dirname}/train/train.json', 'w') as j:
-                        json.dump(train_coco, j, indent=4)   
-            except:
-                print('No valid test folder')
-                
-            print('Done')
-            sys.exit()
-
-
-
-
-
-
-if __name__ == "__main__":
-    main()
