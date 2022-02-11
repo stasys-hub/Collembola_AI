@@ -1,0 +1,29 @@
+name: collembola_AI
+
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+
+dependencies:
+  - matplotlib=3.2.2
+  - numpy=1.18.5
+  - pandas=1.0.5
+  - Pillow=9.0.1
+  - Shapely=1.7.1
+  - tensorflow=2.2.0
+  - tqdm=4.47.0
+  - pytorch::pytorch=1.10.0
+  - torchvision=0.11.1
+  - nvidia::cudatoolkit=11.1
+  - pip
+
+  - pip:
+    - git+https://github.com/obss/sahi.git
+    - --find-links https://dl.fbaipublicfiles.com/detectron2/wheels/cu111/torch1.10/index.html 
+    - detectron2
+    - scikit_learn==1.0.2
+    - opencv_python==4.5.1.48
+    - rglob==1.7
+
+
