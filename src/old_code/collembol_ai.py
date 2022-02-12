@@ -55,11 +55,7 @@ PIL.Image.MAX_IMAGE_PIXELS = 500000000
 
 class collembola_ai:
 
-    # read config from CAI.conf file
-    config = configparser.ConfigParser()
-    config.read("CAI.conf")
-
-    def __init__(self, config_path="CAI.conf", gpu_num="0"):
+    def __init__(self, config_path: str="CAI.conf", gpu_num: str="0"):
         """Function to initialize the CollembolaAI main class. These Parameters will be used to configure Detectron2"""
 
         config = configparser.ConfigParser()
@@ -87,7 +83,7 @@ class collembola_ai:
             self.num_classes = len(json.load(js)["categories"])
 
         print(
-            "Found {} classes in the training annotation file".format(self.num_classes)
+            f"Found {self.num_classes} classes in the training annotation file"
         )
         self.threshold = float(config["OPTIONAL"]["detection_threshold"])
         self.model_zoo_config = config["OPTIONAL"]["model_zoo_config"]
