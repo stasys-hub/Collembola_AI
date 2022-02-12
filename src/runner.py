@@ -14,7 +14,7 @@ Licence:
 # Imports
 import argparse
 import os
-from collembol_ai import collembola_ai
+from cai_model import collembola_ai
 
 def main():
     parser = argparse.ArgumentParser()

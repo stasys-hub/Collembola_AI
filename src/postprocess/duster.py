@@ -17,13 +17,12 @@ from pathlib import Path
 import pandas as pd
 import PIL
 import random
-import rglob
 import shutil
-from tensorflow.keras.preprocessing.image import ImageDataGenerator, array_to_img, img_to_array, load_img
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Conv2D, MaxPooling2D
 from tensorflow.keras.layers import Activation, Dropout, Flatten, Dense
-from cocosets_utils import coco2df, crop_annotations, cocoj_get_categories
+from utils.cocoutils import crop_annotations, cocoj_get_categories
 
 PIL.Image.MAX_IMAGE_PIXELS = 500000000
 
@@ -46,10 +45,6 @@ def dump_training_set(train_directory, dust_directory, duster_path, df_train, df
 
     wipe_dir(duster_train_dir)
     crop_annotations(df_train, train_directory, duster_train_dir)
-
-    #with open(os.path.join(dust_directory, 'inference.json'), 'r') as j:
-    #    dust = coco2df(json.load(j))
-    # df_dust['name'] = 'Dust'
 
     crop_annotations(df_dust, dust_directory, duster_train_dir)
         
@@ -169,7 +164,7 @@ def load_duster_and_classify(duster_path, list_classes):
         model = model_configure()
         model.load_weights(f'{duster_path}/{ncls}.h5')
     
-        train_datagen, test_datagen = get_image_datagen()
+        _train_datagen, test_datagen = get_image_datagen()
     
         test_generator = test_datagen.flow_from_directory(
             f'{duster_path}/to_predict',

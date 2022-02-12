@@ -21,7 +21,7 @@ import ntpath
 import postprocess.duster as duster
 
 
-from evaluation.cocutils import (
+from utils.cocoutils import (
     testresults2coco,
     coco2df,
     draw_coco_bbox,
@@ -35,7 +35,7 @@ import PIL
 import shutil
 
 from sklearn.metrics import confusion_matrix
-from third_party_utils import plot_confusion_matrix
+from utils.third_party_utils import plot_confusion_matrix
 
 PIL.Image.MAX_IMAGE_PIXELS = 500000000
 from detectron2 import model_zoo
