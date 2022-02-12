@@ -16,6 +16,7 @@ import argparse
 import os
 from cai_model import collembola_ai
 from utils.parser import get_arguments
+from utils.describe_dataset import describe_train_test
 
 def main():
 
@@ -37,7 +38,7 @@ def main():
     My_Model.load_train_test()
 
     if args.sets_description:
-        My_Model.describe_train_test()
+        describe_train_test(My_Model.project_directory, My_Model.train_directory, My_Model.test_directory)
 
     if args.train:
         # start training

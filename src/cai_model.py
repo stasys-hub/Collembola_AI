@@ -145,55 +145,6 @@ class collembola_ai:
                 'ERROR!\nUnable to load model configurations!\nPlease check your input and use "print_model_values" for debugging '
             )
 
-    def describe_train_test(self):
-        print("Outputing some infos about the train and test dataset")
-        with open(os.path.join(self.test_directory, "test.json"), "r") as j:
-            ttruth = json.load(j)
-            df_ttruth = coco2df(ttruth)
-            df_ttruth["id_true"] = df_ttruth["id"]
-
-        with open(os.path.join(self.train_directory, "train.json"), "r") as j:
-            train = json.load(j)
-            df_train = coco2df(train)
-            df_train["id_train"] = df_train["id"]
-
-        print("Abundance of each species in the train and test pictures\n")
-        tt_abundances = (
-            df_train.name.value_counts()
-            .to_frame()
-            .join(df_ttruth.name.value_counts(), lsuffix="_train", rsuffix="_test")
-        )
-        tt_abundances.columns = ["Train", "Test"]
-        print(tt_abundances.to_markdown())
-        tt_abundances.to_csv(
-            os.path.join(self.project_directory, "train_test_species_abundance.tsv"),
-            sep="\t",
-        )
-
-        print("\n\nIndividual average area per species\n")
-        sum_abundance = tt_abundances.sum(axis=1)
-        sum_abundance.name = "abundance"
-        species_stats = (
-            pd.concat(
-                [
-                    df_train.groupby("name").sum()["area"].to_frame().reset_index(),
-                    df_ttruth.groupby("name").sum()["area"].to_frame().reset_index(),
-                ]
-            )
-            .groupby("name")
-            .sum()
-            .join(sum_abundance)
-        )
-        species_stats["avg_area"] = round(
-            species_stats["area"] / species_stats["abundance"]
-        ).astype("int")
-
-        print(species_stats["avg_area"].to_markdown())
-        species_stats["avg_area"].to_csv(
-            os.path.join(self.project_directory, "species_avg_individual_area.tsv"),
-            sep="\t",
-        )
-
     def start_training(self):
         '''This function will configure Detectron with your input Parameters and start the Training.
         HINT: If you want to check your Parameters before training use "print_model_values"'''
@@ -628,63 +579,63 @@ class collembola_ai:
         )
         print("\n# ------------------------------------------------- #\n")
 
-        try:
-            # I added this because Detectron2 uses an deprecated overload -> throws warning
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore")
-                os.makedirs(inference_out, exist_ok=True)
-                results_coco = {"images": [], "annotations": []}
+        # try:
+        #     # I added this because Detectron2 uses an deprecated overload -> throws warning
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            os.makedirs(inference_out, exist_ok=True)
+            results_coco = {"images": [], "annotations": []}
 
-                # Loop for predicting on each images starts
-                for i in os.listdir(inference_directory):
-                    if i.endswith(imgtype):
-                        file_path = os.path.join(inference_directory, i)
-                        print(f"processing [{counter}/{n_files}]", end="\r")
-                        im = cv2.imread(file_path)
-                        outputs = predictor(im)
-                        v = Visualizer(
-                            im[:, :, ::-1], metadata=dataset_metadata_test, scale=1.0
-                        )
-                        instances = outputs["instances"].to("cpu")
-                        coco = d2_instance2dict(instances, counter, ntpath.basename(i))
-                        # v = v.draw_instance_predictions(instances)
-                        # result = v.get_image()[:, :, ::-1]
-                        # output_name = f"{inference_out}/annotated_{i}"
-                        # write_res = cv2.imwrite(output_name, result)
-                        counter += 1
+            # Loop for predicting on each images starts
+            for i in os.listdir(inference_directory):
+                if i.endswith(imgtype):
+                    file_path = os.path.join(inference_directory, i)
+                    print(f"processing [{counter}/{n_files}]", end="\r")
+                    im = cv2.imread(file_path)
+                    outputs = predictor(im)
+                    v = Visualizer(
+                        im[:, :, ::-1], metadata=dataset_metadata_test, scale=1.0
+                    )
+                    instances = outputs["instances"].to("cpu")
+                    coco = d2_instance2dict(instances, counter, ntpath.basename(i))
+                    # v = v.draw_instance_predictions(instances)
+                    # result = v.get_image()[:, :, ::-1]
+                    # output_name = f"{inference_out}/annotated_{i}"
+                    # write_res = cv2.imwrite(output_name, result)
+                    counter += 1
 
-                        results_coco["images"] = results_coco["images"] + coco["images"]
-                        results_coco["annotations"] = (
-                            results_coco["annotations"] + coco["annotations"]
-                        )
+                    results_coco["images"] = results_coco["images"] + coco["images"]
+                    results_coco["annotations"] = (
+                        results_coco["annotations"] + coco["annotations"]
+                    )
 
-                # Wrapping results in COCO JSON.
-                annotation_id = 0
-                for a in results_coco["annotations"]:
-                    a["id"] = annotation_id
-                    annotation_id += 1
-                results_coco["type"] = "instances"
-                results_coco["licenses"] = ""
-                results_coco["info"] = ""
+            # Wrapping results in COCO JSON.
+            annotation_id = 0
+            for a in results_coco["annotations"]:
+                a["id"] = annotation_id
+                annotation_id += 1
+            results_coco["type"] = "instances"
+            results_coco["licenses"] = ""
+            results_coco["info"] = ""
 
-                with open(os.path.join(self.train_directory, "train.json"), "r") as j:
-                    train = json.load(j)
-                results_coco["categories"] = train["categories"]
+            with open(os.path.join(self.train_directory, "train.json"), "r") as j:
+                train = json.load(j)
+            results_coco["categories"] = train["categories"]
 
-                df_pred = deduplicate_overlapping_preds(
-                    coco2df(results_coco), dedup_thresh
-                )
-
-                if dusting:
-                    df_pred = self.start_dusting(results_coco, inference_directory)
-
-                results_coco = df2coco(df_pred)
-
-                with open(os.path.join(inference_out, "inferences.json"), "w") as j:
-                    json.dump(results_coco, j, indent=4)
-
-        except Exception as e:
-            print(e)
-            print(
-                'Something went wrong while performing inference on your data. Please check your path directory structure\nUse "print_model_values" for debugging'
+            df_pred = deduplicate_overlapping_preds(
+                coco2df(results_coco), dedup_thresh
             )
+
+            if dusting:
+                df_pred = self.start_dusting(results_coco, inference_directory)
+
+            results_coco = df2coco(df_pred)
+
+            with open(os.path.join(inference_out, "inferences.json"), "w") as j:
+                json.dump(results_coco, j, indent=4)
+
+        # except Exception as e:
+        #     print(e)
+        #     print(
+        #         'Something went wrong while performing inference on your data. Please check your path directory structure\nUse "print_model_values" for debugging'
+        #     )
