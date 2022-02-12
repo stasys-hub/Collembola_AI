@@ -18,18 +18,18 @@ from cai_model import collembola_ai
 from utils.parser import get_arguments
 from utils.describe_dataset import describe_train_test
 
+
 def main():
 
     # get commandline arguments
     args = get_arguments()
-    print(args)
 
     # set some globals for CUDA Device
     os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
     os.environ["CUDA_VISIBLE_DEVICES"] = args.visible_gpu
 
     # load configuration
-    My_Model = collembola_ai(config_path = args.config_file)
+    My_Model = collembola_ai(config_path=args.config_file)
 
     # print the model parameters
     My_Model.print_model_values()
@@ -38,35 +38,42 @@ def main():
     My_Model.load_train_test()
 
     if args.sets_description:
-        describe_train_test(My_Model.project_directory, My_Model.train_directory, My_Model.test_directory)
+        # TODO add save state flag
+        describe_train_test(
+            My_Model.project_directory,
+            My_Model.train_directory,
+            My_Model.test_directory,
+        )
 
+    # start training
     if args.train:
-        # start training
         My_Model.start_training()
     else:
-        print("Skipping training")
+        print("-t not set -> skipping training")
 
+    # start training with duster
     if args.train_duster:
-        # start training
         My_Model.start_training_duster(epochs=50)
     else:
-        print("Skipping duster training")
+        print("-d not set -> skipping duster training")
 
+    
+    # start evaluation on test set
     if args.evaluate:
-        # start evaluation on My_Model.set
         My_Model.start_evaluation_on_test(
             dedup_thresh=My_Model.dedup_thresh, dusting=My_Model.duster
         )
     else:
-        print("Skipping evaluation")
+        print("-e not set -> skipping evaluation")
 
+    # annotate images in given folder
     if args.annotate:
         # Run inference with your trained model on unlabeled data
         My_Model.perform_inference_on_folder(
             imgtype="jpg", dusting=My_Model.duster, dedup_thresh=My_Model.dedup_thresh
         )
     else:
-        print("Nothing to annotate")
+        print("-a not set -> skipping annotation")
 
 
 if __name__ == "__main__":

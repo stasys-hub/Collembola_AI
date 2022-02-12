@@ -69,7 +69,8 @@ def coco2df(coco):
     '''
     classes_df = pd.DataFrame(coco['categories'])
     classes_df.name = classes_df.name.str.strip()
-    classes_df.rename(columns={"id": "category_id"}, inplace=True)
+    classes_df = classes_df.rename(columns={"id": "category_id"})
+    # classes_df.rename(columns={"id": "category_id"}, inplace=True)
     images_df = pd.DataFrame(coco['images'])
     images_df.rename(columns={"id": "image_id"}, inplace=True)
     coco_df = pd.DataFrame(coco['annotations'])\

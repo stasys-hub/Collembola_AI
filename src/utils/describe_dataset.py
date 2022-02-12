@@ -57,7 +57,7 @@ def describe_train_test(project_directory: str, train_directory: str, test_direc
         species_stats["area"] / species_stats["abundance"]
     ).astype("int")
 
-    print(species_stats["avg_area"].to_markdown())
+    print(species_stats["avg_area"].to_markdown(), "\n")
     if save_stats:
         species_stats["avg_area"].to_csv(
             os.path.join(project_directory, "species_avg_individual_area.tsv"),

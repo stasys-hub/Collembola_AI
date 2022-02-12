@@ -37,7 +37,6 @@ import shutil
 from sklearn.metrics import confusion_matrix
 from utils.third_party_utils import plot_confusion_matrix
 
-PIL.Image.MAX_IMAGE_PIXELS = 500000000
 from detectron2 import model_zoo
 from detectron2.data import DatasetCatalog, MetadataCatalog, build_detection_test_loader
 from detectron2.utils.visualizer import Visualizer
@@ -46,11 +45,18 @@ from detectron2.config import get_cfg
 from detectron2.data.datasets import register_coco_instances
 from detectron2.evaluation import COCOEvaluator, inference_on_dataset
 
+PIL.Image.MAX_IMAGE_PIXELS = 500000000
 
 class collembola_ai:
-
     def __init__(self, config_path: str):
-        """Function to initialize the CollembolaAI main class. These Parameters will be used to configure Detectron2"""
+        """
+        ARGS: 
+            config_path: str with absolute path to configuration file
+        RETURN:
+            return initialized collembola model
+
+        Function to initialize the CollembolaAI main class. These Parameters will be used to configure Detectron2
+        """
 
         config = configparser.ConfigParser()
         config.read(config_path)
@@ -63,6 +69,7 @@ class collembola_ai:
         self.test_directory = os.path.join(self.project_directory, "test")
         self.dust_directory = os.path.join(self.project_directory, "dust")
         self.duster_path = os.path.join(self.project_directory, "duster")
+        self.model_zoo_config = config["OPTIONAL"]["model_zoo_config"]
         self.inference_directory = os.path.join(
             self.project_directory, config["OPTIONAL"]["inference_directory"]
         )
@@ -72,15 +79,12 @@ class collembola_ai:
         self.num_workers = int(config["OPTIONAL"]["number_of_workers"])
         self.batch_size = int(config["OPTIONAL"]["batch_size"])
         self.learning_rate = float(config["OPTIONAL"]["learning_rate"])
+        self.threshold = float(config["OPTIONAL"]["detection_threshold"])
 
         with open(os.path.join(self.train_directory, "train.json"), "r") as js:
             self.num_classes = len(json.load(js)["categories"])
+            print(f"Found {self.num_classes} classes in the training annotation file")
 
-        print(
-            f"Found {self.num_classes} classes in the training annotation file"
-        )
-        self.threshold = float(config["OPTIONAL"]["detection_threshold"])
-        self.model_zoo_config = config["OPTIONAL"]["model_zoo_config"]
 
         # set gpu device to use
         self.gpu_num = int(config["OPTIONAL"]["gpu_device_num"])
@@ -94,14 +98,22 @@ class collembola_ai:
         self.dedup_thresh = float(config["OPTIONAL"]["deduplication_iou_threshold"])
 
     def print_model_values(self):
-        """This function will print all model parameters which can be set by the user. It is useful if you have path problems.
-        Hint: On Windows you will probably have to adjust your path because of backslashes"""
+        """
+        ARGS:
+            None
+
+        RETURN:
+            None
+
+        This function will print all model parameters which can be set by the user.
+        It is useful if you have path problems.
+        """
 
         ###
         # SAHI: may require some update ?
         ###
 
-        print("# --------------- Model Parameters ---------------- #\n")
+        print("# ----------------------- Model Parameters ------------------------ #\n")
         print(f"Variable           \tValue\n")
         print(f"Project Dir:        \t{self.project_directory}")
         print(f"Output Dir:         \t{self.output_directory}")
@@ -113,37 +125,21 @@ class collembola_ai:
         print(f"Number of classes:  \t{self.num_classes}")
         print(f"GPU device number:  \t{self.gpu_num}")
         print(f"Treshhold:          \t{self.threshold}")
-        print("\n# ------------------------------------------------- #")
+        print("\n# ----------------------------------------------------------------- #")
 
     def load_train_test(self):
-        """This function loads the train.json file and registers your training data using the \"register_coco_instances\" function of Detectron2
-        IMPORTANT: Currently it is necessary to use this function before performing inference with a trained model"""
-
-        ###
-        # SAHI: may require some update ?
-        ###
-
-        try:
-            # read train.json file
-
-            with open(os.path.join(self.train_directory, "train.json")) as f:
-                imgs_anns = json.load(f)
-
-            # register custom datasets in COCO format
-            #                       "my_dataset", "metadata", "json_annotation.json", "path/to/image/dir
-            register_coco_instances(
-                "train", {}, os.path.join(self.train_directory, "train.json"), "train"
-            )
-            register_coco_instances(
-                "test", {}, os.path.join(self.test_directory, "test.json"), "test"
-            )
-            dataset_dicts = DatasetCatalog.get("train")
-            dataset_metadata = MetadataCatalog.get("train")
-
-        except:
-            print(
-                'ERROR!\nUnable to load model configurations!\nPlease check your input and use "print_model_values" for debugging '
-            )
+        """
+        This function loads the train.json file and registers your training data using the \"register_coco_instances\" function of Detectron2
+        IMPORTANT: Currently it is necessary to use this function before performing inference with a trained model
+        """
+        # register custom datasets in COCO format
+        #                       "my_dataset", "metadata", "json_annotation.json", "path/to/image/dir
+        register_coco_instances(
+            "train", {}, os.path.join(self.train_directory, "train.json"), "train"
+        )
+        register_coco_instances(
+            "test", {}, os.path.join(self.test_directory, "test.json"), "test"
+        )
 
     def start_training(self):
         '''This function will configure Detectron with your input Parameters and start the Training.
@@ -213,7 +209,7 @@ class collembola_ai:
             df_dust,
         )
         print("Training and validating the duster")
-        duster.train_duster(self.duster_path, self.train_directory, epochs=50)
+        duster.train_duster(self.duster_path, self.train_directory, epochs)
 
         print("duster trained")
 
@@ -622,9 +618,7 @@ class collembola_ai:
                 train = json.load(j)
             results_coco["categories"] = train["categories"]
 
-            df_pred = deduplicate_overlapping_preds(
-                coco2df(results_coco), dedup_thresh
-            )
+            df_pred = deduplicate_overlapping_preds(coco2df(results_coco), dedup_thresh)
 
             if dusting:
                 df_pred = self.start_dusting(results_coco, inference_directory)
