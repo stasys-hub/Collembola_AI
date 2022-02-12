@@ -15,73 +15,20 @@ Licence:
 import argparse
 import os
 from cai_model import collembola_ai
+from utils.parser import get_arguments
 
 def main():
-    parser = argparse.ArgumentParser()
 
-    parser.add_argument(
-        "config_file",
-        type=str,
-        help="""Path of the configuration file (default: "./CAI.conf")""",
-    )
+    # get commandline arguments
+    args = get_arguments()
+    print(args)
 
-    parser.add_argument(
-        "-t",
-        "--train",
-        action="store_true",
-        help="""(re-)Train a model using the train set of pictures (default: skip)""",
-    )
-
-    parser.add_argument(
-        "-d",
-        "--train_duster",
-        action="store_true",
-        help="""(re-)Train the CNN "duster" using the train set of pictures (require a trained rCNN first, default: skip)""",
-    )
-
-    parser.add_argument(
-        "-e",
-        "--evaluate",
-        action="store_true",
-        help="""Evaluate the model using the test set of pictures (default: skip)""",
-    )
-
-    parser.add_argument(
-        "-a",
-        "--annotate",
-        action="store_true",
-        help="""Annotate the inference set of pictures (default: skip)""",
-    )
-
-    parser.add_argument(
-        "-s",
-        "--sets_description",
-        action="store_true",
-        help="""Output some descriptions elements for the train and test set in the project directory""",
-    )
-
-    parser.add_argument(
-        "--visible_gpu",
-        type=str,
-        default="0",
-        help="""List of visible gpu to CUDA (default: "0", example: "0,1")""",
-    )
-
-    parser.add_argument(
-        "--gpu_num",
-        type=int,
-        default=0,
-        help="""Set the gpu device number to use (default: 0)""",
-    )
-
-    args = parser.parse_args()
-
+    # set some globals for CUDA Device
     os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
     os.environ["CUDA_VISIBLE_DEVICES"] = args.visible_gpu
 
-    # Example: Run CollembolAI with your defined parameters
-    # Define your model parameters
-    My_Model = collembola_ai(config_path=args.config_file)
+    # load configuration
+    My_Model = collembola_ai(config_path = args.config_file)
 
     # print the model parameters
     My_Model.print_model_values()
