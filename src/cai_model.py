@@ -168,6 +168,7 @@ class collembola_ai:
         os.makedirs(self.output_directory, exist_ok=True)
         trainer = DefaultTrainer(cfg)
         trainer.resume_or_load(resume=False)
+        cfg.DATALOADER.FILTER_EMPTY_ANNOTATIONS = False
         trainer.train()
         print("\n---------------Finished Training---------------")
 
