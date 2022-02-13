@@ -16,15 +16,15 @@ in this project we retrained the popular [Faster R-CNN](https://arxiv.org/pdf/15
 12. Hypochthonius rufulus
 
 
-We provide a wrapper script, collembolAI.py, written in python to perform the inference workflow on ones dataset with only having to change a few lines of code. Furthermore this wrapper script simplifies the registration of custom datasets. Since we provide our own trained model you can retrain this model to extend it's classes and usability. 
+We provide a wrapper script, collembolAI.py, written in python to perform the inference workflow on ones dataset with only having to change a few lines of code - if at all. Furthermore this wrapper script simplifies the registration of custom datasets. Since we provide our own trained model you can retrain this model to extend it's classes and usability. 
 
 Currently we expect the labeled image data to be labeled in COCO format as this immensely simplifies the registration process with Detectron2. For our own labeling workflow we used [labelImg](https://github.com/tzutalin/labelImg) with PascalVOC labels format. The conversion to COCO format can be done with [voc2coco](https://github.com/yukkyo/voc2coco), a version of the script is distributed in this project.
 
-We wrote the code on a machine running Ubuntu 20.04 LTS, but any Linux environment allowing you to run Pytorch with proprietary Nvidia drivers (tested with 450.102.04) and CUDA (tested with 11.0/1 & 10.2) should work. MacOS and Windows could also work if you get Detectron running, but no guarantees on that. The VRAM you will need, will depend on the model you take from the [Model Zoo](https://github.com/facebookresearch/detectron2/blob/main/MODEL_ZOO.md). We were using the Faster R-CNN R50-FPN model on a RTX 2060 Super GPU without any hassles.
+We wrote the code on a machine running Ubuntu 20.04 LTS/Arch, but any Linux environment allowing you to run Pytorch with proprietary Nvidia drivers (tested with 450.102.04) and CUDA (tested with 11.0/1/3 & 10.2 - we recommend 11.3 or 10.2 LTS) should work. MacOS and Windows could also work if you get Detectron running, but no guarantees on that. The VRAM you will need, will depend on the model you take from the [Model Zoo](https://github.com/facebookresearch/detectron2/blob/main/MODEL_ZOO.md). We were using the Faster R-CNN R50-FPN model on a RTX 2060 Super GPU without any hassles.
 
 ### Dependencies
 
-1. Python 3 (a few packages found in [requirements.txt](src/requirements.txt))
+1. Python 3 and few packages found in [environment.yaml](environment.yaml)
 2. Detectron 2 - since we use the Detectron2 API we have the same Dependecies. Please refer to their [Documentation](https://detectron2.readthedocs.io/tutorials/install.html#requirements). 
 3. CUDA enabled Nvidia GPU -> checkout the [compatibility list ](https://detectron2.readthedocs.io/en/latest/tutorials/install.html#install-pre-built-detectron2-linux-only) of detectron and CUDA (We ran it on a RTX 2060 Super, Nvidia Titan X and V100)
 
@@ -32,8 +32,23 @@ We wrote the code on a machine running Ubuntu 20.04 LTS, but any Linux environme
 
 Suggestion on how to install Detectron2 with CAI:
 
-- replace values in [ ] according to your system
+```bash
+# clone the git
+git clone https://github.com/stasys-hub/Collembola_AI.git
 
+# move to git dir
+cd Collembola_AI 
+
+# install with conda/mamba*
+conda env create -f environment.yaml 
+
+```
+\* for better performance i would suggest to install conda and then use [https://github.com/mamba-org/mamba](mamba) as a drop-in replacement for conda, which is way faster
+
+### Alternative installation with pip
+replace values in [ ] according to your system
+
+you will probably have to get your hands dirty and find out which cuda version + detectron2 + pytorch works for you
 
 ```bash
 # create a python env with python 3 (tested with 3.8+)
@@ -48,7 +63,7 @@ pip3 install torch==1.10.0+cu111 torchvision==0.11.1+cu111\
 
 # install Detectron2 
 python -m pip install detectron2 -f\
- https://dl.fbaipublicfiles.com/detectron2/wheels/cu110/torch1.7/index.html
+ https://dl.fbaipublicfiles.com/detectron2/wheels/cu111/torch1.7/index.html
 
 # install other deps from requirements.txt
 pip3 install -r requirements.txt
@@ -96,27 +111,22 @@ duster = True
 ```bash
 python3 collembolAI.py -s template.conf
 ```
-<br/>
 2. training the detector/classificator model (SAHI/Detectron2)
 ```bash
 python3 collembolAI.py -t template.conf
 ```
-<br/>
 3. training the duster (optional): a CNN model to recognize false positive (typically dirt, dust, background specks) in the detector output. Depends on the above step, and needs some background only pictures in the 'dust' folder. If duster = True in configuration file, the duster will be already trained in step 2.
 ```bash
 python3 collembolAI.py -d template.conf
 ```
-<br/>
 3. testing: evaluate the model performance on the test set. If duster = True in configuration file, the duster will be used to further clean the output.
 ```bash
 python3 collembolAI.py -e template.conf
 ```
-<br/>
 4. annotate new pictures: perform inferences on new pictures found in the inference directory. If duster = True in configuration file, the duster will be used to further clean the output.
 ```bash
 python3 collembolAI.py -a template.conf
 ```
-<br/>
 5. Running the whole pipeline: training, testing, annotating in one go.
 ```bash
 python3 collembolAI.py -t -e -a template.conf
@@ -188,21 +198,18 @@ Run
 ```bash
 stitch_macro.py -o sitched to_stitch
 ```
-<br/>
 In the "done" folder, the stiched composite will be written as: set01.jpg, set02.jpg, [...], set03.jpg (file name follows folders name). The folders inside 'to_stitch' will also be moved to 'done/' in order to backup the initial pictures.
 
 For detail run:
 ```bash
 stitch_macro.py -h
 ```
-<br/>
 
 #### Annotate pictures.
 
 
 Our pipeline support annotations using [labelImg](https://github.com/tzutalin/labelImg) using XML PascalVOC labels format that will be converted to JSON COCO format.
 Of course, you can choose the software of your liking. In the end, <strong>you need to produce annotation in the JSON COCO format.</strong>
-<br/>
 
 ##### 1. The normal way.
 Using labelImg the 'normal way', simply use the software to annotate each specimens in your pictures, savin annotations in PascalVOC format. Then convert those annotations in a single COCO JSON file using the third party script [voc2coco](https://github.com/yukkyo/voc2coco) (we provide a version of it in this repository though).
@@ -303,7 +310,6 @@ Edit the dataset.json file with a text editor and replace the pre-existing "cate
 ```bash
 review_coco_annotations.py dataset.json
 ```
-<br/>
 The first specimen will be displayed in a popup, and you will be asked to enter the correct label ID in the terminal prompt. Once done, press enter and the next specimen will show up. If you made an error and already validated it, simply interrupt the script, open dataset.json.reviewed, find the last annotation block (at the end of the file) and correct manually the categorie_id then save the file. Run the script again, it will resume. You can interrupt the script at any time, running it again will resume wher you left it.
 
 
@@ -323,10 +329,8 @@ To select at random a given percentage of pictures to use as test, use the comma
 ```bash
 cocosets_utils.py --split dataset.json.reviewed --ratio 20
 ```
-<br/>
 it will move 20% of the pictures selected at random in a child 'test' folder and write a test.json COCO file, the remaining pictures are moved in a child 'train' folder along with a train.json COCO file.
 
-<br/>
 Alternatively, you can create the train and test folder yourself and dispatch the pictures manually. Then run the following command to obtain the reduced COCO file:
 ```bash
 cocosets_utils.py --split ./dataset.json.reviewed
