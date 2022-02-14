@@ -440,7 +440,7 @@ class collembola_ai:
         
         #================================================================================================
 
-    def perform_inference_on_folder(self, inference_directory = None, imgtype = "jpg", dusting = False, dedup_thresh=dedup_thresh):
+    def perform_inference_on_folder(self, inference_directory = None, imgtype = "jpg", dusting = False, dedup_thresh=0.15):
         '''This function can be used to perform inference on the unannotated data you want to classify.
            IMPORTANT: You still have to load a model using "load_train_test"'''
         
