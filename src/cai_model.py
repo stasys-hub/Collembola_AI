@@ -18,34 +18,36 @@ import cv2
 import warnings
 import ntpath
 
-import postprocess.duster as duster
+#import postprocess.duster as duster
 
 
 from utils.cocoutils import (
     testresults2coco,
     coco2df,
     draw_coco_bbox,
-    deduplicate_overlapping_preds,
+    non_max_supression,
     match_true_n_pred_box,
     d2_instance2dict,
     df2coco,
+    create_coco_json_for_inference,
+    sahi_result_to_coco
 )
 
-import PIL
-import shutil
+from PIL import Image
+import numpy as np
 
 from sklearn.metrics import confusion_matrix
 from utils.third_party_utils import plot_confusion_matrix
 
 from detectron2 import model_zoo
-from detectron2.data import DatasetCatalog, MetadataCatalog, build_detection_test_loader
+from detectron2.data import DatasetCatalog, MetadataCatalog
 from detectron2.utils.visualizer import Visualizer
 from detectron2.engine import DefaultTrainer, DefaultPredictor
 from detectron2.config import get_cfg
 from detectron2.data.datasets import register_coco_instances
-from detectron2.evaluation import COCOEvaluator, inference_on_dataset
+from sahi.predict import predict
 
-PIL.Image.MAX_IMAGE_PIXELS = 500000000
+Image.MAX_IMAGE_PIXELS = None
 
 class collembola_ai:
     def __init__(self, config_path: str):
@@ -64,23 +66,24 @@ class collembola_ai:
         # set project directories
         self.project_directory = config["DEFAULT"]["project_directory"]
         self.model_name = config["DEFAULT"]["model_name"]
-        self.output_directory = os.path.join(self.project_directory, self.model_name)
+        self.model_directory = os.path.join(self.project_directory, self.model_name)
         self.train_directory = os.path.join(self.project_directory, "train")
         self.test_directory = os.path.join(self.project_directory, "test")
-        self.dust_directory = os.path.join(self.project_directory, "dust")
-        self.duster_path = os.path.join(self.project_directory, "duster")
         self.model_zoo_config = config["OPTIONAL"]["model_zoo_config"]
         self.inference_directory = os.path.join(
             self.project_directory, config["OPTIONAL"]["inference_directory"]
         )
-
         # set model parameters
         self.num_iter = int(config["OPTIONAL"]["iterations"])
         self.num_workers = int(config["OPTIONAL"]["number_of_workers"])
         self.batch_size = int(config["OPTIONAL"]["batch_size"])
         self.learning_rate = float(config["OPTIONAL"]["learning_rate"])
         self.threshold = float(config["OPTIONAL"]["detection_threshold"])
-
+        # set SAHI paramters
+        self.slice_height = int(config["DEFAULT"]["slice_height"])
+        self.slice_width = int(config["DEFAULT"]["slice_width"])
+        self.overlap_height_ratio = float(config["DEFAULT"]["overlap_height_ratio"])
+        self.overlap_width_ratio = float(config["DEFAULT"]["overlap_width_ratio"])
         with open(os.path.join(self.train_directory, "train.json"), "r") as js:
             self.num_classes = len(json.load(js)["categories"])
             print(f"Found {self.num_classes} classes in the training annotation file")
@@ -90,12 +93,8 @@ class collembola_ai:
         self.gpu_num = int(config["OPTIONAL"]["gpu_device_num"])
         self.trainer = None
 
-        # Using duster ?
-        if config["OPTIONAL"]["duster"] == "True":
-            self.duster = True
-        else:
-            self.duster = False
-        self.dedup_thresh = float(config["OPTIONAL"]["deduplication_iou_threshold"])
+
+        self.nms_iou_threshold = float(config["OPTIONAL"]["non_maximum_supression_iou_threshold"])
 
     def print_model_values(self):
         """
@@ -116,7 +115,7 @@ class collembola_ai:
         print("# ----------------------- Model Parameters ------------------------ #\n")
         print(f"Variable           \tValue\n")
         print(f"Project Dir:        \t{self.project_directory}")
-        print(f"Output Dir:         \t{self.output_directory}")
+        print(f"Output Dir:         \t{self.model_directory}")
         print(f"Model Zoo:          \t{self.model_zoo_config}")
         print(f"Number iterations:  \t{self.num_iter}")
         print(f"Number of workers:  \t{self.num_workers}")
@@ -155,7 +154,7 @@ class collembola_ai:
         cfg.DATASETS.TRAIN = ("train",)
         cfg.DATASETS.TEST = ()
         cfg.DATALOADER.NUM_WORKERS = self.num_workers
-        cfg.OUTPUT_DIR = self.output_directory
+        cfg.OUTPUT_DIR = self.model_directory
         cfg.MODEL.WEIGHTS = model_zoo.get_checkpoint_url(self.model_zoo_config)
         cfg.SOLVER.IMS_PER_BATCH = self.batch_size
         cfg.SOLVER.BASE_LR = self.learning_rate
@@ -165,96 +164,15 @@ class collembola_ai:
         cfg.nms = True
         cfg.MODEL.DEVICE = self.gpu_num
         # This will start the Trainer -> Runtime depends on hardware and parameters
-        os.makedirs(self.output_directory, exist_ok=True)
+        os.makedirs(self.model_directory, exist_ok=True)
         trainer = DefaultTrainer(cfg)
         trainer.resume_or_load(resume=False)
         cfg.DATALOADER.FILTER_EMPTY_ANNOTATIONS = False
         trainer.train()
         print("\n---------------Finished Training---------------")
 
-    def start_training_duster(self, epochs=50):
-        """This function will train the duster (CNN binary classifier to recognize dust or other non animal object)"""
 
-        with open(os.path.join(self.train_directory, "train.json"), "r") as j:
-            train = json.load(j)
-            df_train = coco2df(train)
-            # df_train['id_train'] = df_train['id']
-
-        ######
-        # Finding some dust using the trained rCNN model
-        self.perform_inference_on_folder(
-            inference_directory=self.dust_directory,
-            imgtype="jpg",
-            dedup_thresh=0.999,
-            dusting=False,
-        )
-
-        with open(
-            os.path.join(self.dust_directory, f"{self.model_name}/inferences.json"), "r"
-        ) as j:
-            tdust = json.load(j)
-
-        df_dust = coco2df(tdust)
-        df_dust["name"] = "Dust"
-
-        # Grabing some pieces of background in the train set (optional, currently no longer in use)
-        # extract_random_background_subpictures(df_train, self.train_directory, f'{self.duster_path}/train/Dust', num_subpict_per_pict=200)
-
-        print("Preparing the duster training and validation data")
-
-        duster.dump_training_set(
-            self.train_directory,
-            self.dust_directory,
-            self.duster_path,
-            df_train,
-            df_dust,
-        )
-        print("Training and validating the duster")
-        duster.train_duster(self.duster_path, self.train_directory, epochs)
-
-        print("duster trained")
-
-    def start_dusting(self, df_pred, img_dir):
-        """Dusting (identifying and removing False Positive ('dust'))"""
-
-        # Extracting subpictures from the predictions
-        print("Extracting and organizing the subpictures for dusting")
-
-        def wipe_dir(path):
-            if os.path.exists(path) and os.path.isdir(path):
-                shutil.rmtree(path)
-
-        wipe_dir(os.path.join(self.duster_path, "to_predict"))
-
-        os.makedirs(os.path.join(self.duster_path, "to_predict/All"), exist_ok=True)
-
-        for file in df_pred.file_name.unique():
-            im = PIL.Image.open(img_dir + "/" + file)
-
-            for name in df_pred["name"].unique():
-                os.makedirs(
-                    os.path.join(self.duster_path, f"to_predict/{name}"), exist_ok=True
-                )
-
-                for raw in df_pred[
-                    (df_pred["file_name"] == file) & (df_pred["name"] == name)
-                ][["box", "id", "name"]].values:
-                    im.crop(raw[0].bounds).save(
-                        f"{self.duster_path}/to_predict/All/{raw[1]}.jpg", "JPEG"
-                    )
-                    im.crop(raw[0].bounds).save(
-                        f"{self.duster_path}/to_predict/{raw[2]}/{raw[1]}.jpg", "JPEG"
-                    )
-            im.close()
-
-        list_classes = list(df_pred.name.unique())
-        duster.load_duster_and_classify(self.duster_path, list_classes)
-        dust = pd.read_csv(f"{self.duster_path}/dust.csv")
-        df_pred = df_pred.merge(dust, on="id")
-        df_pred = df_pred[df_pred["dust"] != "Dust"]
-        return df_pred
-
-    def start_evaluation_on_test(self, dedup_thresh=0.15, verbose=True, dusting=False):
+    def start_evaluation_on_test(self, nms_iou_threshold=0.15, verbose=True):
         """This function will run the trained model on the test dataset (test/test.json)"""
 
         ##
@@ -263,72 +181,43 @@ class collembola_ai:
 
         # RUNNING INFERENCE
         # ================================================================================================
-        # Creating the output directories tree
-        os.makedirs(self.output_directory, exist_ok=True)
-        output_test_res = os.path.join(self.output_directory, "test_results")
-        os.makedirs(output_test_res, exist_ok=True)
 
-        # Loading the model
-        cfg = get_cfg()
-        cfg.merge_from_file(model_zoo.get_config_file(self.model_zoo_config))
-        cfg.DATASETS.TRAIN = ("train",)
-        cfg.DATALOADER.NUM_WORKERS = self.num_workers
-        cfg.OUTPUT_DIR = self.output_directory
-        cfg.SOLVER.IMS_PER_BATCH = self.batch_size
-        cfg.SOLVER.BASE_LR = self.learning_rate
-        cfg.SOLVER.MAX_ITER = self.num_iter
-        cfg.MODEL.ROI_HEADS.NUM_CLASSES = self.num_classes
-        cfg.MODEL.RETINANET.NUM_CLASSES = self.num_classes
-        cfg.nms = True
-        cfg.MODEL.DEVICE = self.gpu_num
+        # TO-DO WRITE A JSON FILE WITH LABELS WHEN TRAINING
+        labels = {"0": "Sminthurides_aquaticus__281415","1":"Folsomia_candida__158441",
+        "2":"Lepidocyrtus_lignorum__707889","3":"Xenylla_boerneri__1725404",
+        "4":"Sphaeridia_pumilis__212016","5":"Megalothorax_minimus__438500",
+        "6":"Ceratophysella_gibbosa__187618","7":"Ceratophysella_gibbosa__187618",
+        "8":"Malaconothrus_monodactylus__229876","9":"Sinella_curviseta__187695",
+        "10":"Deuterosminthurus_bicinctus__2041938","11":"Desoria_tigrina__370036"}
+        # do batch inference on test set
+        # returns relative path to resulting JSON
+        
+        export_dir = predict(model_type="detectron2", 
+                            slice_width=self.slice_width, 
+                            slice_height=self.slice_height, 
+                            overlap_height_ratio=self.overlap_height_ratio, 
+                            overlap_width_ratio=self.overlap_width_ratio, 
+                            source= self.test_directory,
+                            model_path=os.path.join(self.model_directory,"model_final.pth"),
+                            model_config_path=os.path.join(self.model_directory,"model_parameters.yaml"),
+                            no_standard_prediction=True,
+                            export_visual=False,
+                            return_dict=True, 
+                            model_category_mapping=labels,
+                            model_confidence_threshold=self.threshold,
+                            dataset_json_path=os.path.join(self.test_directory, "test.json"),
+                            model_device="cuda"
+        )["export_dir"]
 
-        # Configuration for test mode
-        print(os.path.join(self.output_directory, "model_final.pth"))
-        cfg.MODEL.WEIGHTS = os.path.join(self.output_directory, "model_final.pth")
-        cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = self.threshold
-        cfg.DATASETS.TEST = ("test",)
-
-        # Improving detection on crowed picture
-        cfg.MODEL.RPN.POST_NMS_TOPK_TEST = 10000
-        cfg.MODEL.RPN.PRE_NMS_TOPK_TEST = 10000
-        cfg.TEST.DETECTIONS_PER_IMAGE = 10000
-        predictor = DefaultPredictor(cfg)
-
-        # Preparing the test dataset
-        dataset_dicts_test = DatasetCatalog.get("test")
-        dataset_metadata_test = MetadataCatalog.get("test")
-
-        # Configuring trainer and evaluator
-        trainer = DefaultTrainer(cfg)
-        trainer.resume_or_load(resume=True)
-        evaluator = COCOEvaluator("test", cfg, False, output_dir=output_test_res)
-        val_loader = build_detection_test_loader(cfg, "test")
-
-        # Running the inference
-        print(inference_on_dataset(trainer.model, val_loader, evaluator))
+        # RUNNING EVALUATION
         # ================================================================================================
-
-        ####
-        # SAHI: At this stage, the json output of SAHI should be in the output_test_res directory, with the
-        # name coco_instances_results.json (if under a different name, then other functions must be adapted)
-        ####
-
-        ####
-        # SAHI :If above condition is met, the rest of the test pipeline does not need to be modified
-        ####
-
-        # REPORTING
-        # ================================================================================================
-        print("Reporting and evaluating the inference on test set")
-        print('\n\nLoading predicted labels from "coco_instances_results.json"')
-
+        print("Reporting and evaluating the inference on test set",end="\n\n\n")
+        print('Loading predicted labels from "result.json"')
+        if not os.path.isdir(os.path.join(self.project_directory, "test_results")):
+            os.mkdir(os.path.join(self.project_directory, "test_results"))
         # Loading the predictions in a DataFrame, deduplicating overlaping predictions
-        tpred = testresults2coco(self.test_directory, self.output_directory, write=True)
-        df_pred = deduplicate_overlapping_preds(coco2df(tpred), dedup_thresh)
-
-        # Dusting (identifying and removing False Positive ('dust'))
-        if dusting:
-            df_pred = self.start_dusting(df_pred, self.test_directory)
+        tpred = testresults2coco(self.test_directory, os.path.join(self.project_directory,export_dir), write=True)
+        df_pred = non_max_supression(coco2df(tpred), nms_iou_threshold)
 
         # Loading train set and test set in DataFrame
         with open(os.path.join(self.test_directory, "test.json"), "r") as j:
@@ -376,7 +265,7 @@ class collembola_ai:
         )
         tt_abundances.to_csv(
             os.path.join(
-                self.output_directory, "test_results/species_abundance_n_area.tsv"
+                self.project_directory, os.path.join("test_results","species_abundance_n_area.tsv")
             ),
             sep="\t",
         )
@@ -384,7 +273,7 @@ class collembola_ai:
 
         # Matching the predicted annotations with the true annotations
         pairs = match_true_n_pred_box(df_ttruth, df_pred, IoU_threshold=0.4)
-
+        pairs.to_csv(os.path.join(self.project_directory, os.path.join("test_results","pairs.csv")))
         # Computing detection rate, classification accuracy, false positive rate
         # ------------------------------------------------------------------------------------------------
         total_true_labels = pairs.id_true.notnull().sum()
@@ -444,8 +333,9 @@ class collembola_ai:
         print("Do not use for testing or for training ! =)")
         draw_coco_bbox(
             df_pred,
-            os.path.join(self.output_directory, "test_results"),
+            os.path.join(self.project_directory, "test_results"),
             self.test_directory,
+            True,
             prefix="predicted",
             line_width=10,
             fontsize=150,
@@ -464,9 +354,8 @@ class collembola_ai:
         plot_confusion_matrix(
             mcm,
             pairs.dropna().name_true.unique(),
-            normalize=False,
             write=os.path.join(
-                self.output_directory, "test_results/cm_onlydetected.png"
+                self.project_directory, "test_results/cm_onlydetected.png"
             ),
         )
 
@@ -478,9 +367,8 @@ class collembola_ai:
         plot_confusion_matrix(
             mcm,
             pairs.dropna().name_true.unique(),
-            normalize=False,
             write=os.path.join(
-                self.output_directory, "test_results/cm_norm_onlydetected.png"
+                self.project_directory, "test_results/cm_norm_onlydetected.png"
             ),
         )
 
@@ -493,144 +381,80 @@ class collembola_ai:
         plot_confusion_matrix(
             mcm,
             np.append(pairs.name_true.unique(), "NaN"),
-            normalize=False,
-            write=os.path.join(self.output_directory, "test_results/cm_inclNaN.png"),
+            write=os.path.join(self.project_directory, "test_results/cm_inclNaN.png"),
         )
 
+
         # 4. CM including only the undetected true label (Nan), normalized
+        
         mcm = mcm.astype("float") / mcm.sum(axis=1)[:, np.newaxis] * 100
         mcm = np.nan_to_num(mcm.round(1))
         plot_confusion_matrix(
             mcm,
-            pairs.fillna("NaN").name_true.unique(),
-            normalize=False,
+            np.append(pairs.name_true.unique(), "NaN"),
             write=os.path.join(
-                self.output_directory, "test_results/cm_norm_inclNaN.png"
+                self.project_directory, "test_results/cm_norm_inclNaN.png"
             ),
         )
-
         print("\n---------------Finished Evaluation---------------")
+        
 
         # ================================================================================================
 
     def perform_inference_on_folder(
         self,
-        inference_directory=None,
-        imgtype="jpg",
-        dusting=False,
-        dedup_thresh=0.15,
+        inference_result_directory:str,
+        inference_source_directory=None
     ):
-        '''This function can be used to perform inference on the unannotated data you want to classify.
-        IMPORTANT: You still have to load a model using "load_train_test"'''
+        '''
+        This function can be used to perform inference on the unannotated data you want to classify.
+        '''
 
-        if not inference_directory:
-            inference_directory = self.inference_directory
+        if not inference_source_directory:
+            inference_source_directory = self.inference_directory
 
         ####
         # SAHI : Adapt with SAHI script for prediction on new images.
         ####
+        # TO-DO WRITE A JSON FILE WITH LABELS WHEN TRAINING
+        labels = {"0": "Sminthurides_aquaticus__281415","1":"Folsomia_candida__158441",
+                  "2":"Lepidocyrtus_lignorum__707889","3":"Xenylla_boerneri__1725404",
+                  "4":"Sphaeridia_pumilis__212016","5":"Megalothorax_minimus__438500",
+                  "6":"Ceratophysella_gibbosa__187618","7":"Ceratophysella_gibbosa__187618",
+                  "8":"Malaconothrus_monodactylus__229876","9":"Sinella_curviseta__187695",
+                  "10":"Deuterosminthurus_bicinctus__2041938","11":"Desoria_tigrina__370036"}
+        # write a coco-style json file, to enable export of labels
+        create_coco_json_for_inference(inference_source_directory, labels)
 
-        try:
-            # reload the model
-            cfg = get_cfg()
-            cfg.merge_from_file(model_zoo.get_config_file(self.model_zoo_config))
-            cfg.MODEL.ROI_HEADS.NUM_CLASSES = self.num_classes
-            cfg.nms = True
+        # do batch inference on test set
+        # returns relative path to resulting JSON
+        export_dir = predict(model_type="detectron2", 
+                            slice_width=self.slice_width, 
+                            slice_height=self.slice_height, 
+                            overlap_height_ratio=self.overlap_height_ratio, 
+                            overlap_width_ratio=self.overlap_width_ratio, 
+                            source=inference_source_directory,
+                            model_path=os.path.join(self.model_directory,"model_final.pth"),
+                            model_config_path=os.path.join(self.model_directory,"model_parameters.yaml"),
+                            no_standard_prediction=True,
+                            export_visual=False,
+                            return_dict=True, 
+                            model_category_mapping=labels,
+                            model_confidence_threshold=self.threshold,
+                            dataset_json_path=os.path.join(inference_source_directory, "inference.json"),
+                            model_device="cuda"
+        )["export_dir"]
 
-            # config for test mode
-            cfg.MODEL.WEIGHTS = os.path.join(self.output_directory, "model_final.pth")
-            cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = self.threshold
-            cfg.DATASETS.TEST = ("test",)
-            cfg.MODEL.DEVICE = self.gpu_num
-            # Improving detection on crowed picture ?
-            cfg.MODEL.RPN.POST_NMS_TOPK_TEST = 10000
-            cfg.MODEL.RPN.PRE_NMS_TOPK_TEST = 10000
-            cfg.TEST.DETECTIONS_PER_IMAGE = 10000
-
-            predictor = DefaultPredictor(cfg)
-
-            # prepare test dataset for metadata
-            dataset_dicts_test = DatasetCatalog.get("test")
-            dataset_metadata_test = MetadataCatalog.get("test")
-        except Exception as e:
-            print(e)
-            print(
-                "Something went wrong while loading the model configuration. Please Check your path'"
-            )
-            raise
-
-        ####
-        # SAHI : In the block below is the loop that used to execute prediction on each new images (looping on images)
-        # then collecting output and concatenating it in a single json file following COCO format
-        # Probably need to be adapted with SAHI scripts.
-        ####
-
-        inference_out = os.path.join(inference_directory, self.model_name)
-        n_files = len(
-            ([f for f in os.listdir(inference_directory) if f.endswith(imgtype)])
-        )
-        counter = 1
-
-        print(
-            f"Starting inference ...\nNumber of Files:\t{n_files}\nImage extension:\t{imgtype}"
-        )
-        print("\n# ------------------------------------------------- #\n")
-
-        # try:
-        #     # I added this because Detectron2 uses an deprecated overload -> throws warning
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            os.makedirs(inference_out, exist_ok=True)
-            results_coco = {"images": [], "annotations": []}
-
-            # Loop for predicting on each images starts
-            for i in os.listdir(inference_directory):
-                if i.endswith(imgtype):
-                    file_path = os.path.join(inference_directory, i)
-                    print(f"processing [{counter}/{n_files}]", end="\r")
-                    im = cv2.imread(file_path)
-                    outputs = predictor(im)
-                    v = Visualizer(
-                        im[:, :, ::-1], metadata=dataset_metadata_test, scale=1.0
-                    )
-                    instances = outputs["instances"].to("cpu")
-                    coco = d2_instance2dict(instances, counter, ntpath.basename(i))
-                    # v = v.draw_instance_predictions(instances)
-                    # result = v.get_image()[:, :, ::-1]
-                    # output_name = f"{inference_out}/annotated_{i}"
-                    # write_res = cv2.imwrite(output_name, result)
-                    counter += 1
-
-                    results_coco["images"] = results_coco["images"] + coco["images"]
-                    results_coco["annotations"] = (
-                        results_coco["annotations"] + coco["annotations"]
-                    )
-
-            # Wrapping results in COCO JSON.
-            annotation_id = 0
-            for a in results_coco["annotations"]:
-                a["id"] = annotation_id
-                annotation_id += 1
-            results_coco["type"] = "instances"
-            results_coco["licenses"] = ""
-            results_coco["info"] = ""
-
-            with open(os.path.join(self.train_directory, "train.json"), "r") as j:
-                train = json.load(j)
-            results_coco["categories"] = train["categories"]
-
-            df_pred = deduplicate_overlapping_preds(coco2df(results_coco), dedup_thresh)
-
-            if dusting:
-                df_pred = self.start_dusting(results_coco, inference_directory)
-
-            results_coco = df2coco(df_pred)
-
-            with open(os.path.join(inference_out, "inferences.json"), "w") as j:
-                json.dump(results_coco, j, indent=4)
-
-        # except Exception as e:
-        #     print(e)
-        #     print(
-        #         'Something went wrong while performing inference on your data. Please check your path directory structure\nUse "print_model_values" for debugging'
-        #     )
+        if not os.path.isdir(inference_result_directory):
+            os.mkdir(inference_result_directory)
+        # Loading the predictions in a DataFrame, deduplicating overlaping predictions
+        sahi_result_to_coco(os.path.join(self.project_directory,os.path.join(export_dir,"result.json")),
+                            os.path.join(inference_source_directory, "inference.json"),
+                            os.path.join(self.project_directory,os.path.join(export_dir,"result_coco.json")))
+        with open(os.path.join(self.project_directory,os.path.join(export_dir,"result_coco.json")),"r") as j:
+            tpred = json.load(j)
+        # apply non maximum supression
+        df_pred = non_max_supression(coco2df(tpred), self.nms_iou_threshold)
+        # output annotated images
+        draw_coco_bbox(df_pred, inference_result_directory, inference_source_directory, False)
+        print("\n---------------Finished Inference---------------")

@@ -1,0 +1,14 @@
+[DEFAULT]
+project_directory = /home/stephan/Desktop/collembola_revision/stephan/second_phase/train_1500_full_plus_6bg_testing
+model_name = faster_rcnn_X_101_FPN
+ 
+[OPTIONAL]
+inference_directory = inference
+model_zoo_config = COCO-Detection/faster_rcnn_X_101_FPN_3x.yaml
+iterations = 5000
+number_of_workers = 2
+batch_size = 20
+learning_rate = 0.00025 
+detection_threshold = 0.7
+gpu_device_num = 0
+non_maximum_supression_iou_threshold = 0.15

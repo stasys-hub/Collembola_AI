@@ -16,13 +16,6 @@ def get_arguments():
     )
 
     parser.add_argument(
-        "-d",
-        "--train_duster",
-        action="store_true",
-        help="""(re-)Train the CNN "duster" using the train set of pictures (require a trained rCNN first, default: skip)""",
-    )
-
-    parser.add_argument(
         "-e",
         "--evaluate",
         action="store_true",
@@ -34,6 +27,18 @@ def get_arguments():
         "--annotate",
         action="store_true",
         help="""Annotate the inference set of pictures (default: skip)""",
+    )
+
+    parser.add_argument(
+        "-i",
+        "--input_dir",
+        help="""Input directory for inference."""
+    )
+
+    parser.add_argument(
+        "-o",
+        "--output_dir",
+        help="""Output directory for inference."""
     )
 
     parser.add_argument(

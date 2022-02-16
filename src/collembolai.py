@@ -12,7 +12,6 @@ Licence:
 """
 
 # Imports
-import argparse
 import os
 from cai_model import collembola_ai
 from utils.parser import get_arguments
@@ -51,26 +50,29 @@ def main():
     else:
         print("-t not set -> skipping training")
 
-    # start training with duster
-    if args.train_duster:
-        My_Model.start_training_duster(epochs=50)
-    else:
-        print("-d not set -> skipping duster training")
-
-    
     # start evaluation on test set
     if args.evaluate:
         My_Model.start_evaluation_on_test(
-            dedup_thresh=My_Model.dedup_thresh, dusting=My_Model.duster
+            nms_iou_threshold=My_Model.nms_iou_threshold
         )
     else:
         print("-e not set -> skipping evaluation")
 
     # annotate images in given folder
     if args.annotate:
+        if args.input_dir is None:
+            raise ValueError("Specify input directory with '-i' or '--input_dir'.")
+        else:
+            input_dir = args.input_dir
+        if args.output_dir is None:
+            output_dir = os.path.join(input_dir,"results")
+            print(f"No output directory set. Results will be saved in {output_dir}")
+        else:
+            output_dir = args.output_dir
         # Run inference with your trained model on unlabeled data
         My_Model.perform_inference_on_folder(
-            imgtype="jpg", dusting=My_Model.duster, dedup_thresh=My_Model.dedup_thresh
+            output_dir,
+            input_dir
         )
     else:
         print("-a not set -> skipping annotation")

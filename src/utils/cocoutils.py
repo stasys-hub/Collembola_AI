@@ -40,7 +40,7 @@ def testresults2coco(test_dir, inference_dir, write=False):
     # Open inference results and make it a complete COCO format by replacing the ttruth COCO annotations
     # and creating other standard fields (not all useful to us, but could allow to process it with further "COCO tools")
     tinference = ttruth.copy()
-    with open(f'{inference_dir}/test_results/coco_instances_results.json', 'r') as j:
+    with open(f'{inference_dir}/result.json', 'r') as j:
         tinference['annotations'] = json.load(j)
         
     anid = 0
@@ -52,7 +52,7 @@ def testresults2coco(test_dir, inference_dir, write=False):
     
     # Write inference results in COCO format json
     if write:
-        with open(f'{inference_dir}/test_results/results.json', 'w') as j:
+        with open(f'{inference_dir}/result_output.json', 'w') as j:
             json.dump(tinference, j)
     
     return tinference
@@ -95,7 +95,7 @@ def df2coco(df):
     coco['info'] = ''
     return coco
 
-def draw_coco_bbox(coco, out_dir, coco_dir, prefix='annotated', line_width=10, fontsize = 80, fontYshift = -50):
+def draw_coco_bbox(coco, out_dir, coco_dir, eval_mode = False, prefix='annotated', line_width=10, fontsize = 80, fontYshift = -50):
     '''
     Detectron2 module for writing annotated pictures was not so explicit to me, and default output not so pretty.
     This function will draw the annotation on the pictures of a coco dataset. The dataset can be provided as a coco instance,
@@ -103,7 +103,7 @@ def draw_coco_bbox(coco, out_dir, coco_dir, prefix='annotated', line_width=10, f
     To adjust display, simply change line_width (= box line), font_size (= label font). Labels text can be shifted vertically
     with fontYshift.
     '''
-    
+    # define some colors for bounding boxes
     colors = ['aliceblue', 'antiquewhite', 'aqua', 'aquamarine', 'azure', 
               'beige', 'bisque', 'blanchedalmond', 'blue', 'blueviolet', 
               'burlywood', 'cadetblue', 'chartreuse', 'chocolate', 'coral', 
@@ -122,39 +122,33 @@ def draw_coco_bbox(coco, out_dir, coco_dir, prefix='annotated', line_width=10, f
               'salmon', 'sandybrown', 'seagreen', 'seashell', 'sienna', 'silver', 'skyblue', 'slateblue', 'slategray', 'slategrey', 
               'snow', 'springgreen', 'steelblue', 'tan', 'teal', 'thistle', 'tomato', 'turquoise', 'violet', 'wheat', 'white', 
               'whitesmoke', 'yellow', 'yellowgreen']
-    scolors = random.sample(colors, len(colors))
-    
-    fnt = ImageFont.truetype(os.path.dirname(os.path.realpath(__file__)) + "/FreeMono.ttf", fontsize)
-    
+    fnt = ImageFont.truetype(os.path.join(os.path.dirname(os.path.realpath(__file__)), "FreeMono.ttf"), fontsize)
+    # convert result dataframe to coco
     try:
         coco_df = coco2df(coco)
     except:
         coco_df = coco
-    
-    if 'score' in coco_df.columns:
-        coco_df['name'] = coco_df['name'] + ' ' + round(coco_df['score'], 2).astype(str)
-        
-    if 'is_false_positive' in coco_df.columns:
-        coco_df['name'] = coco_df['name'] + ' ' + (~coco_df['is_false_positive']).astype(str) + ' detection'
-    
+    # create label for bounding box
+    if eval_mode:
+        coco_df['label'] = [f"{' '.join(row['category_name'].split('__')[0].split('_'))} {round(row['score'], 2)} {'true detection' if not row['is_false_positive'] else 'false detection'}" for _,row in coco_df.iterrows()]
+    else:
+        coco_df['label'] = [f"{' '.join(row['category_name'].split('__')[0].split('_'))} {round(row['score'], 2)}" for _,row in coco_df.iterrows()]
     resh = lambda x : ((x[0],x[1]), (x[0]+x[2],x[1]+x[3]))
     coco_df['coordinates'] = coco_df['bbox'].apply(resh)
-    
-    coco_df['color'] = ""
-    for c in coco_df.name.unique():
-        if len(scolors) == 0:
-            scolors = random.sample(colors, len(colors))
-        color = scolors.pop()
-        coco_df['color'] = coco_df['color'].where(~(coco_df['name'] == c), color)
-        
+    # sample colors randomly
+    scolors = random.sample(colors, len(colors))
+    # create dictionary so that every class maps to one color
+    colormap = {}
+    for idx,classlabel in enumerate(coco_df['category_name'].unique()):
+        colormap[classlabel] = scolors[idx]
+    # add a color column
+    for idx,row in coco_df.iterrows():
+        coco_df.loc[idx,'color'] = colormap[row['category_name']]
+    coco_df.to_csv(f'{out_dir}/{prefix}.csv')
     for img_name in coco_df.file_name.unique():
-
-        if len(scolors) == 0:
-            scolors = random.sample(colors, len(colors))
-        outline = scolors.pop()
         source_img = Image.open(f'{coco_dir}/{img_name}')
         draw = ImageDraw.Draw(source_img)
-        for row in coco_df[coco_df['file_name'] == img_name][['name','coordinates', 'color']].values:
+        for row in coco_df[coco_df['file_name'] == img_name][['label','coordinates', 'color']].values:
             draw.rectangle(row[1], outline=row[2], width=line_width)
             draw.text((row[1][0][0], row[1][0][1]+fontYshift), row[0], font=fnt, fill=row[2])
         
@@ -162,10 +156,10 @@ def draw_coco_bbox(coco, out_dir, coco_dir, prefix='annotated', line_width=10, f
         source_img.save(f'{out_dir}/{prefix}_{img_name}', "JPEG")
 
            
-def deduplicate_overlapping_preds(df_pred, IoU_threshold=0.7, area=1000000):
+def non_max_supression(df_pred, IoU_threshold=0.7, area=1000000):
     '''Identify overlapping annotations boxes in a dataframe created from  a coco instance, identify and remove duplicates based
        on IoU threshold'''
-    dedup_df = pd.DataFrame()
+    nms_df = pd.DataFrame()
     for image_id in df_pred.image_id.unique():
         sdf_pred = df_pred[df_pred['image_id'] == image_id].copy()
         sdf_pred['id_temp'] = sdf_pred['id']
@@ -181,9 +175,9 @@ def deduplicate_overlapping_preds(df_pred, IoU_threshold=0.7, area=1000000):
         sdf_pred = sdf_pred[~(sdf_pred['id'].isin(df['drop']))] 
         sdf_pred.drop(labels=['id_temp'], axis=1, inplace=True)
         
-        dedup_df = pd.concat([dedup_df, sdf_pred], axis=0)
-    dedup_df = dedup_df[dedup_df['area'] < area]
-    return dedup_df
+        nms_df = pd.concat([nms_df, sdf_pred], axis=0)
+    nms_df = nms_df[nms_df['area'] < area]
+    return nms_df
 
 def match_true_n_pred_box(df_ttruth, df_pred, IoU_threshold=0.4):
     '''Match the ground truth annotations with the predicted annotations based on IoU, then merge ground truth
@@ -449,3 +443,58 @@ def crop_annotations(cocodf, input_dir, output_dir):
             im.crop(raw[0].bounds).save(os.path.join(output_dir, f'{raw[2]}/{raw[1]}.jpg'),'JPEG')
         im.close()
 
+def create_coco_json_for_inference(path_to_inference_folder: str, labels:dir) -> None:
+    with open(os.path.join(path_to_inference_folder,"inference.json"),"w") as json_file:
+        json_file.write('{\n    "images": [\n')
+        valid_input_formats = ("jpg","jpeg","png")
+        id = 0
+        print("-------Inference on these Images-------")
+        for file in os.listdir(path_to_inference_folder):
+            if file.lower().endswith(valid_input_formats):
+                print(f"  {id} {file}")
+                im = Image.open(os.path.join(path_to_inference_folder,file))
+                width, height = im.size
+                if id > 0:
+                    json_file.write(',')
+                json_file.write('        {\n')
+                json_file.write(f'            "file_name": "{file}",\n')
+                json_file.write(f'            "height": {height},\n')
+                json_file.write(f'            "width": {width},\n')
+                json_file.write(f'            "id": {id}\n')
+                json_file.write('        }')
+                id += 1
+        json_file.write('\n    ],\n')
+        json_file.write('    "type": "instances",\n')
+        json_file.write('    "annotations": [\n')
+        json_file.write('    ],\n')
+        json_file.write('    "categories": [\n')
+        for i,key in enumerate(labels):
+            if i>0:
+                json_file.write(',\n')
+            json_file.write('        {\n')
+            json_file.write('            "supercategory": "none",\n')
+            json_file.write(f'            "id": {key},\n')
+            json_file.write(f'            "name": "{labels[key]}"\n')
+            json_file.write('        }')
+        json_file.write('\n    ],\n')
+        json_file.write('    "licenses": "",\n')
+        json_file.write('    "info": ""\n')
+        json_file.write('}')
+
+def sahi_result_to_coco(path_to_sahi_json: str, path_to_inference_json: str, path_output_json: str) -> None:
+    with open(path_to_inference_json, "r") as json_file:
+        inference = json.load(json_file)     
+    with open(path_to_sahi_json,"r") as json_file:
+        result = json.load(json_file)
+    anid = 0
+    for d in result:
+        d['iscrowd'] = 0
+        d['segmentation'] = []
+        d['id'] = anid
+        anid += 1
+    out_json = {}
+    out_json["images"] = inference["images"]
+    out_json["annotations"] = result
+    out_json["categories"] = inference["categories"]
+    with open(path_output_json,"w") as json_file:
+        json.dump(out_json, json_file, indent=4)
