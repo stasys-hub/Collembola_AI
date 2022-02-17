@@ -9,6 +9,12 @@ def get_arguments():
     )
 
     parser.add_argument(
+        "--slice",
+        action="store_true",
+        help="Slices images in train directory. Can be run together with -t to immediately start training. (default: skip) "
+    )
+
+    parser.add_argument(
         "-t",
         "--train",
         action="store_true",

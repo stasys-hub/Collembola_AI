@@ -45,6 +45,11 @@ def main():
         )
 
     # start training
+    if args.slice:
+        My_Model.slice_trainset()
+    else:
+        print("--slice not set -> skipping slicing of trainset")
+
     if args.train:
         My_Model.start_training()
     else:

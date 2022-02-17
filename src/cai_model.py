@@ -10,9 +10,11 @@ Last Update:         31.01.2021
 Licence:             
 """
 
+from multiprocessing.sharedctypes import Value
 import os
 import json
 import configparser
+import shutil
 import pandas as pd
 import cv2
 import warnings
@@ -46,8 +48,7 @@ from detectron2.engine import DefaultTrainer, DefaultPredictor
 from detectron2.config import get_cfg
 from detectron2.data.datasets import register_coco_instances
 from sahi.predict import predict
-
-Image.MAX_IMAGE_PIXELS = None
+from sahi import slicing
 
 class collembola_ai:
     def __init__(self, config_path: str):
@@ -91,18 +92,18 @@ class collembola_ai:
 
         # set gpu device to use
         self.gpu_num = int(config["OPTIONAL"]["gpu_device_num"])
-        self.trainer = None
+
 
 
         self.nms_iou_threshold = float(config["OPTIONAL"]["non_maximum_supression_iou_threshold"])
 
     def print_model_values(self):
         """
-        ARGS:
-            None
+        ARGS)
 
-        RETURN:
-            None
+
+        RETURN)
+
 
         This function will print all model parameters which can be set by the user.
         It is useful if you have path problems.
@@ -126,6 +127,30 @@ class collembola_ai:
         print(f"Treshhold:          \t{self.threshold}")
         print("\n# ----------------------------------------------------------------- #")
 
+    def slice_trainset(self):
+        """
+        This function takes an unsliced dataset and produces an scliced version.
+        The folder should contain a coco annotation file. The original folder will
+        be renamed to input_unscliced and the folder with the sliced images will
+        get the name of the train directory.
+        """
+        if not os.path.isdir(self.train_directory):
+            raise FileNotFoundError(f"Did not find train directory in project folder. Please provide train directory with path {self.train_directory}.")
+        if not os.path.isfile(os.path.join(self.train_directory,"train.json")):
+            raise FileNotFoundError("Please provide a coco annotation file 'train.json'.")
+        unsliced_train_directory = self.train_directory + "_unscliced"
+        shutil.move(self.train_directory,unsliced_train_directory)
+        os.mkdir(self.train_directory)
+        slicing.slice_coco(coco_annotation_file_path = os.path.join(unsliced_train_directory,"train.json"),
+                image_dir = unsliced_train_directory,
+                output_coco_annotation_file_name = os.path.join(self.train_directory,"train.json"),
+                output_dir = self.train_directory,
+                slice_height = self.slice_height,
+                slice_width = self.slice_width,
+                overlap_height_ratio = self.overlap_height_ratio,
+                overlap_width_ratio = self.overlap_width_ratio)
+        
+
     def load_train_test(self):
         """
         This function loads the train.json file and registers your training data using the \"register_coco_instances\" function of Detectron2
@@ -147,7 +172,23 @@ class collembola_ai:
         ##
         ## UPDATE WITH THE TRAINING SCRIPT USING SAHI
         ##
-
+        # check if the train images are sliced
+        Image.MAX_IMAGE_PIXELS = None
+        with open(os.path.join(self.train_directory,"train.json"),"r") as train_json:
+            train_coco = json.load(train_json)
+        im = Image.open(os.path.join(self.train_directory,train_coco["images"][0]["file_name"]))
+        width, height = im.size
+        if width > self.slice_width or height > self.slice_height:
+            print("----------------------------------")
+            print("----------------------------------")
+            print("Loaded one image from train directory")
+            print(train_coco['images'][0]['file_name'])
+            print(f"width: {width}px \t height: {height}px")
+            print("Config file specifies")
+            print(f"width: {self.slice_width}px \t height: {self.slice_height}px")
+            print("----------------------------------")
+            print("----------------------------------")
+            raise ValueError("The size of the images in the train directory is larger than specified in the config file. Please run slicing first (flag '--slice') and ensure that the train directory is named 'train'.")
         # load a model from the modelzoo and initialize model weights and set our model params
         cfg = get_cfg()
         cfg.merge_from_file(model_zoo.get_config_file(self.model_zoo_config))
@@ -403,9 +444,8 @@ class collembola_ai:
 
     def perform_inference_on_folder(
         self,
-        inference_result_directory:str,
-        inference_source_directory=None
-    ):
+        inference_source_directory: str,
+        inference_result_directory:str):
         '''
         This function can be used to perform inference on the unannotated data you want to classify.
         '''
@@ -420,7 +460,7 @@ class collembola_ai:
         labels = {"0": "Sminthurides_aquaticus__281415","1":"Folsomia_candida__158441",
                   "2":"Lepidocyrtus_lignorum__707889","3":"Xenylla_boerneri__1725404",
                   "4":"Sphaeridia_pumilis__212016","5":"Megalothorax_minimus__438500",
-                  "6":"Ceratophysella_gibbosa__187618","7":"Ceratophysella_gibbosa__187618",
+                  "6":"Ceratophysella_gibbosa__187618","7":"Hypochtonius_rufulus__66580",
                   "8":"Malaconothrus_monodactylus__229876","9":"Sinella_curviseta__187695",
                   "10":"Deuterosminthurus_bicinctus__2041938","11":"Desoria_tigrina__370036"}
         # write a coco-style json file, to enable export of labels
