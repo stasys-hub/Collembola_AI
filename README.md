@@ -12,9 +12,21 @@
 
 - [Usage](#usage)
   
-  ### Introduction
+  - [Example of configuration file](#example-of-configuartion-file)
+  
+  - [Running the pipeline](#running-the-pipeline)
 
-  in this project we retrained the popular [Faster R-CNN](https://arxiv.org/pdf/1506.01497.pdf) Convolutional Neural Network using Facebooks [Detectron2](https://github.com/facebookresearch/detectron2) Framework to detect and classify species in a mock community of soil mesofauna preserved in ethanol. The community is made of 10 Collembola species and 2 Acari species, and were acquired using our homemade macrophotography workflow "HoverMacroCam" (described in Sys et al (submitted), arduino control scripts provided here, contact us for details in the mean time).
+- [HoverMacroCam](#hovermacrocam)
+
+- [Building a dataset](#building-a-dataset)
+  
+  - [Acquire pictures](#acquite-pictures)
+  
+  - [Annotate pictures](#anotate-pictures.)
+
+## Introduction
+
+in this project we retrained the popular [Faster R-CNN](https://arxiv.org/pdf/1506.01497.pdf) Convolutional Neural Network using Facebooks [Detectron2](https://github.com/facebookresearch/detectron2) Framework to detect and classify species in a mock community of soil mesofauna preserved in ethanol. The community is made of 10 Collembola species and 2 Acari species, and were acquired using our homemade macrophotography workflow "HoverMacroCam" (described in Sys et al (submitted), arduino control scripts provided here, contact us for details in the mean time).
 
 1. Sinella curviseta
 2. Lepidocyrtus lignorum
@@ -59,8 +71,6 @@ We wrote the code on a machine running Ubuntu 20.04 LTS/Arch, but any Linux envi
    # set up git-lfs for your git account
    git lfs install
    ```
-
-
 
 ### Install in conda enviorment
 
@@ -125,10 +135,8 @@ The Script collembolAI.py shipped with CollembolAI is the heart of the pipeline.
    3. **Train**: To train the model on your custom dataset use the flag `-t`. The training will be run automatically on the train folder in your project folder with the settings specified in the config file. It is also possible to run training in conjunction with `--slice`.
    4. **Inference**: To annotate pictures use the flag `-a` and specify the input directory with `-i`. Additionally, you can set and output directory with `-o`. If this is missing, the annotated pictures will automatically stored in the folder `{input_directory}/results`.
    5. **Evaluation**: To evaluate the performance of the model on an **annotated** test set, use the flag `-e`. The test set should be in the project folder you specified in the configuration file. It is important that the `test/test.json` is in coco-format. (Refer to our annotation files on [Kaggle](https://www.kaggle.com/dataset/6684ca6ba3f391356b2435fe1f80160923e9d92b2fd03c9d69dc88286c785d23?select=train), if you need to see the format).
-   
-   
 
-#### Example of configuration file
+### Example of configuration file
 
 ```
 [DEFAULT]
@@ -182,7 +190,7 @@ non_maximum_supression_iou_threshold = 0.15
 
 - **non_maximum_supression_iou_threshold**: Threshold for non-maximum supression. When two bounding boxes overlap by more then specified, only the one with the highest confidence score will be kept.
 
-#### Running the pipeline
+### Running the pipeline
 
 1. Describe the training set
    
