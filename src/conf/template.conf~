@@ -1,6 +1,5 @@
 [DEFAULT]
 project_directory = /path/to/project/
-model_name = faster_rcnn_X_101_FPN
 model_name = faster_rcnn_r50_fpn
 slice_height = 1500
 slice_width = 1500

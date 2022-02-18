@@ -1,4 +1,6 @@
 import argparse
+
+
 def get_arguments():
     parser = argparse.ArgumentParser()
 
@@ -11,7 +13,7 @@ def get_arguments():
     parser.add_argument(
         "--slice",
         action="store_true",
-        help="Slices images in train directory. Can be run together with -t to immediately start training. (default: skip) "
+        help="Slices images in train directory. Can be run together with -t to immediately start training. (default: skip) ",
     )
 
     parser.add_argument(
@@ -35,16 +37,10 @@ def get_arguments():
         help="""Annotate the inference set of pictures (default: skip)""",
     )
 
-    parser.add_argument(
-        "-i",
-        "--input_dir",
-        help="""Input directory for inference."""
-    )
+    parser.add_argument("-i", "--input_dir", help="""Input directory for inference.""")
 
     parser.add_argument(
-        "-o",
-        "--output_dir",
-        help="""Output directory for inference."""
+        "-o", "--output_dir", help="""Output directory for inference."""
     )
 
     parser.add_argument(

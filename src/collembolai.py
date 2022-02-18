@@ -57,9 +57,7 @@ def main():
 
     # start evaluation on test set
     if args.evaluate:
-        My_Model.start_evaluation_on_test(
-            nms_iou_threshold=My_Model.nms_iou_threshold
-        )
+        My_Model.start_evaluation_on_test(nms_iou_threshold=My_Model.nms_iou_threshold)
     else:
         print("-e not set -> skipping evaluation")
 
@@ -70,15 +68,12 @@ def main():
         else:
             input_dir = args.input_dir
         if args.output_dir is None:
-            output_dir = os.path.join(input_dir,"results")
+            output_dir = os.path.join(input_dir, "results")
             print(f"No output directory set. Results will be saved in {output_dir}")
         else:
             output_dir = args.output_dir
         # Run inference with your trained model on unlabeled data
-        My_Model.perform_inference_on_folder(
-            output_dir,
-            input_dir
-        )
+        My_Model.perform_inference_on_folder(output_dir, input_dir)
     else:
         print("-a not set -> skipping annotation")
 

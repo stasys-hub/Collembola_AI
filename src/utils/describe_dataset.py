@@ -1,9 +1,15 @@
 import os
 import json
 import pandas as pd
-from utils.cocoutils import coco2df 
+from utils.cocoutils import coco2df
 
-def describe_train_test(project_directory: str, train_directory: str, test_directory: str, save_stats: bool = False) -> None:
+
+def describe_train_test(
+    project_directory: str,
+    train_directory: str,
+    test_directory: str,
+    save_stats: bool = False,
+) -> None:
     """
     Args:
         project_directory: path to the project directory for collembolAI
@@ -12,7 +18,7 @@ def describe_train_test(project_directory: str, train_directory: str, test_direc
     Return:
         None
 
-    This Function print some useful stats for the train and test dataset. 
+    This Function print some useful stats for the train and test dataset.
     """
     print("Outputing some infos about the train and test dataset")
     with open(os.path.join(test_directory, "test.json"), "r") as j:

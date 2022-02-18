@@ -14,19 +14,17 @@ import matplotlib.pyplot as plt
 import numpy as np
 import itertools
 
-def plot_confusion_matrix(cm,
-                          target_names,
-                          title='Confusion matrix',
-                          cmap="Blues",
-                          write=None,
-                          show=False):
+
+def plot_confusion_matrix(
+    cm, target_names, title="Confusion matrix", cmap="Blues", write=None, show=False
+):
     """
     Purpose:   given a sklearn confusion matrix (cm), make a nice plot
     Authors:   Originally from Scikit-learn, adapted by George Fisher, minor modification
                by C. Schneider (adding the image writing lines).
     Sources:   http://scikit-learn.org/stable/auto_examples/model_selection/plot_confusion_matrix.html
                https://www.kaggle.com/grfiv4/plot-a-confusion-matrix
-    Licence:   The code of this function is adapted from George Fisher's apache 2.0 licenced work. Please preserve 
+    Licence:   The code of this function is adapted from George Fisher's apache 2.0 licenced work. Please preserve
                the content of this docstring to this point.
 
     Arguments
@@ -55,7 +53,6 @@ def plot_confusion_matrix(cm,
                           title        = best_estimator_name) # title of graph
                           write        = None
     """
-    
 
     # calculate metrics
     accuracy = np.trace(cm) / float(np.sum(cm))
@@ -65,7 +62,7 @@ def plot_confusion_matrix(cm,
     # initalize plot
     fig, axes = plt.subplots(figsize=(14, 14))
     # plot
-    im = axes.imshow(cm, interpolation='nearest', cmap=cmap)
+    im = axes.imshow(cm, interpolation="nearest", cmap=cmap)
     axes.set_title(title, fontsize=20)
     plt.colorbar(im, ax=axes)
     # change x & y tick labels
@@ -76,14 +73,23 @@ def plot_confusion_matrix(cm,
     # apply colormap & text labels
     thresh = cm.max() / 2
     for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
-        axes.text(j, i, "{:,}".format(cm[i, j]),
-                    horizontalalignment="center",
-                    color="white" if cm[i, j] > thresh else "black")
+        axes.text(
+            j,
+            i,
+            "{:,}".format(cm[i, j]),
+            horizontalalignment="center",
+            color="white" if cm[i, j] > thresh else "black",
+        )
     plt.tight_layout()
     # axes labels
-    axes.set_ylabel('True label', fontsize=16)
-    axes.set_xlabel('Predicted label\naccuracy={:0.4f}; misclass={:0.4f}'.format(accuracy, misclass), fontsize=16)
-    for label in (axes.get_xticklabels() + axes.get_yticklabels()):
+    axes.set_ylabel("True label", fontsize=16)
+    axes.set_xlabel(
+        "Predicted label\naccuracy={:0.4f}; misclass={:0.4f}".format(
+            accuracy, misclass
+        ),
+        fontsize=16,
+    )
+    for label in axes.get_xticklabels() + axes.get_yticklabels():
         label.set_fontsize(16)
     if write:
         plt.savefig(write)
