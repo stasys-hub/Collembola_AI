@@ -5,3 +5,4 @@ __pycache__/
 .vscode/
 .ipynb_checkpoints/
 src/test.py
+src/conf/working.conf

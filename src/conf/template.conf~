@@ -1,19 +1,19 @@
 [DEFAULT]
-project_directory = /cluster/home/cschneider/CollembolAI/Pilot_MixMock/
+project_directory = /path/to/project/
 model_name = faster_rcnn_X_101_FPN
+model_name = faster_rcnn_r50_fpn
 slice_height = 1500
 slice_width = 1500
 overlap_height_ratio = 0.6
 overlap_width_ratio = 0.6
- 
+
 [OPTIONAL]
 inference_directory = inference
-model_zoo_config = COCO-Detection/faster_rcnn_X_101_FPN_3x.yaml
-iterations = 8000
+model_zoo_config = COCO-Detection/faster_rcnn_r50_fpn.yaml
+iterations = 5000
 number_of_workers = 2
-batch_size = 5
+batch_size = 20
 learning_rate = 0.00025 
-detection_treshold = 0.6
+detection_threshold = 0.7
 gpu_device_num = 0
-duster = False
-deduplication_iou_threshold = 0.15
+non_maximum_supression_iou_threshold = 0.15

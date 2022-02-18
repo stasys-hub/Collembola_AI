@@ -1,15 +1,15 @@
 [DEFAULT]
-project_directory = /home/stephan/Desktop/collembola_revision/stephan/second_phase/train_1500_full_plus_6bg_testing/test_slicing
+project_directory = /path/to/project/
 model_name = faster_rcnn_X_101_FPN
+model_name = faster_rcnn_r50_fpn
 slice_height = 1500
 slice_width = 1500
 overlap_height_ratio = 0.6
 overlap_width_ratio = 0.6
 
- 
 [OPTIONAL]
 inference_directory = inference
-model_zoo_config = COCO-Detection/faster_rcnn_X_101_FPN_3x.yaml
+model_zoo_config = COCO-Detection/faster_rcnn_r50_fpn.yaml
 iterations = 5000
 number_of_workers = 2
 batch_size = 20

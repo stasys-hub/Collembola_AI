@@ -34,8 +34,10 @@ def draw_coco_bbox(
     with fontYshift.
     """
     # define some colors for bounding boxes
-    with open(os.path.join(os.path.dirname(os.path.realpath(__file__)),"colors.txt"),"r") as colorfile:
-        colors = [color.replace("\n","") for color in colorfile]
+    with open(
+        os.path.join(os.path.dirname(os.path.realpath(__file__)), "colors.txt"), "r"
+    ) as colorfile:
+        colors = [color.replace("\n", "") for color in colorfile]
     Image.MAX_IMAGE_PIXELS = None
     fnt = ImageFont.truetype(
         os.path.join(os.path.dirname(os.path.realpath(__file__)), "FreeMono.ttf"),
@@ -63,10 +65,10 @@ def draw_coco_bbox(
     # create dictionary so that every class maps to one color
     colormap = {}
     for idx, classlabel in enumerate(coco_df["category_name"].unique()):
-        colormap[classlabel] = colors[idx]
+        colormap[classlabel] = colors[idx % len(colors)]
     # add a color column
     for idx, row in coco_df.iterrows():
-        coco_df.loc[idx, "color"] = colormap[row["category_name"] % len(colors)]
+        coco_df.loc[idx, "color"] = colormap[row["category_name"]]
     coco_df.to_csv(f"{out_dir}/{prefix}.csv")
     for img_name in coco_df.file_name.unique():
         source_img = Image.open(f"{coco_dir}/{img_name}")

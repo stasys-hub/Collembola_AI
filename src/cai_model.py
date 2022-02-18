@@ -26,7 +26,7 @@ from utils.cocoutils import (
 )
 
 from utils.output_inference_images import draw_coco_bbox
-from utils.nms import non_max_supression
+from postprocess.nms import non_max_supression
 from evaluate.match_groundtruth import match_true_n_pred_box
 
 from PIL import Image
