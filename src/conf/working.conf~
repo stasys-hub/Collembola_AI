@@ -5,9 +5,10 @@ slice_height = 1500
 slice_width = 1500
 overlap_height_ratio = 0.6
 overlap_width_ratio = 0.6
+class_agnostic = True
 
 [OPTIONAL]
-inference_directory = inference
+
 model_zoo_config = COCO-Detection/faster_rcnn_r50_fpn.yaml
 iterations = 5000
 number_of_workers = 2

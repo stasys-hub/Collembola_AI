@@ -65,9 +65,6 @@ class collembola_ai:
         self.train_directory = os.path.join(self.project_directory, "train")
         self.test_directory = os.path.join(self.project_directory, "test")
         self.model_zoo_config = config["OPTIONAL"]["model_zoo_config"]
-        self.inference_directory = os.path.join(
-            self.project_directory, config["OPTIONAL"]["inference_directory"]
-        )
         # set model parameters
         self.num_iter = int(config["OPTIONAL"]["iterations"])
         self.num_workers = int(config["OPTIONAL"]["number_of_workers"])
@@ -83,10 +80,6 @@ class collembola_ai:
         with open(os.path.join(self.train_directory, "train.json"), "r") as js:
             self.num_classes = len(json.load(js)["categories"])
             print(f"Found {self.num_classes} classes in the training annotation file")
-
-        # set gpu device to use
-        self.gpu_num = int(config["OPTIONAL"]["gpu_device_num"])
-
         self.nms_iou_threshold = float(
             config["OPTIONAL"]["non_maximum_supression_iou_threshold"]
         )
@@ -476,13 +469,9 @@ class collembola_ai:
         This function can be used to perform inference on the unannotated data you want to classify.
         """
 
-        if not inference_source_directory:
-            inference_source_directory = self.inference_directory
-
         ####
         # SAHI : Adapt with SAHI script for prediction on new images.
         ####
-        # TO-DO WRITE A JSON FILE WITH LABELS WHEN TRAINING
         if os.path.isfile(os.path.join(self.model_directory, "classes.json")):
             with open(
                 os.path.join(self.model_directory, "classes.json"), "r"
