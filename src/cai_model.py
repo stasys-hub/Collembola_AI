@@ -6,7 +6,7 @@ Module title:        collembolAI.py
 Purpose:             Object Detection and classification for samples of
                      soil fauna invertebrates in fluid
 Dependencies:        See ReadMe
-Last Update:         31.01.2021
+Last Update:         31.01.2022
 Licence:             
 """
 
@@ -21,13 +21,13 @@ import shutil
 from utils.cocoutils import (
     testresults2coco,
     coco2df,
-    non_max_supression,
     match_true_n_pred_box,
     create_coco_json_for_inference,
     sahi_result_to_coco
 )
 
 from utils.output_inference_images import draw_coco_bbox
+from utils.nms import non_max_supression
 
 from PIL import Image
 import numpy as np
