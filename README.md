@@ -83,6 +83,8 @@ git clone https://github.com/stasys-hub/Collembola_AI.git
 cd Collembola_AI 
 # install with conda/mamba*
 conda env create -f environment.yaml
+# activate the environment
+conda activate collembola_AI
 ```
 
 \* for better performance we would suggest to install conda and then use [https://github.com/mamba-org/mamba](mamba) as a drop-in replacement for conda, which is way faster
