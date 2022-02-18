@@ -69,7 +69,6 @@ def draw_coco_bbox(
     # add a color column
     for idx, row in coco_df.iterrows():
         coco_df.loc[idx, "color"] = colormap[row["category_name"]]
-    coco_df.to_csv(f"{out_dir}/{prefix}.csv")
     for img_name in coco_df.file_name.unique():
         source_img = Image.open(f"{coco_dir}/{img_name}")
         draw = ImageDraw.Draw(source_img)

@@ -23,6 +23,7 @@ from utils.cocoutils import (
     coco2df,
     create_coco_json_for_inference,
     sahi_result_to_coco,
+    extract_classes_from_coco_json,
 )
 
 from utils.output_inference_images import draw_coco_bbox
@@ -163,9 +164,6 @@ class collembola_ai:
         register_coco_instances(
             "train", {}, os.path.join(self.train_directory, "train.json"), "train"
         )
-        register_coco_instances(
-            "test", {}, os.path.join(self.test_directory, "test.json"), "test"
-        )
 
     def start_training(self):
         '''This function will configure Detectron with your input Parameters and start the Training.
@@ -222,6 +220,10 @@ class collembola_ai:
                     configuration.pop(idx)
             configuration = "\n".join(configuration)
             outfile.write(configuration)
+        extract_classes_from_coco_json(
+            os.path.join(self.train_directory, "train.json"),
+            os.path.join(self.model_directory, "classes.json"),
+        )
         trainer = DefaultTrainer(cfg)
         trainer.resume_or_load(resume=False)
         cfg.DATALOADER.FILTER_EMPTY_ANNOTATIONS = False
@@ -237,22 +239,18 @@ class collembola_ai:
 
         # RUNNING INFERENCE
         # ================================================================================================
+        if not os.path.isfile(os.path.join(self.test_directory, "test.json")):
+            raise FileNotFoundError(
+                f"Did not find the test.json path in test diretory: {self.test_directory}."
+            )
+        if not os.path.isfile(os.path.join(self.model_directory, "classes.json")):
+            extract_classes_from_coco_json(
+                os.path.join(self.test_directory, "test.json"),
+                os.path.join(self.model_directory, "classes.json"),
+            )
+        with open(os.path.join(self.model_directory, "classes.json"), "r") as classes:
+            labels = json.load(classes)
 
-        # TO-DO WRITE A JSON FILE WITH LABELS WHEN TRAINING
-        labels = {
-            "0": "Sminthurides_aquaticus__281415",
-            "1": "Folsomia_candida__158441",
-            "2": "Lepidocyrtus_lignorum__707889",
-            "3": "Xenylla_boerneri__1725404",
-            "4": "Sphaeridia_pumilis__212016",
-            "5": "Megalothorax_minimus__438500",
-            "6": "Ceratophysella_gibbosa__187618",
-            "7": "Ceratophysella_gibbosa__187618",
-            "8": "Malaconothrus_monodactylus__229876",
-            "9": "Sinella_curviseta__187695",
-            "10": "Deuterosminthurus_bicinctus__2041938",
-            "11": "Desoria_tigrina__370036",
-        }
         # do batch inference on test set
         # returns relative path to resulting JSON
         export_dir = predict(
@@ -346,11 +344,6 @@ class collembola_ai:
 
         # Matching the predicted annotations with the true annotations
         pairs = match_true_n_pred_box(df_ttruth, df_pred, IoU_threshold=0.4)
-        pairs.to_csv(
-            os.path.join(
-                self.project_directory, os.path.join("test_results", "pairs.csv")
-            )
-        )
         # Computing detection rate, classification accuracy, false positive rate
         # ------------------------------------------------------------------------------------------------
         total_true_labels = pairs.id_true.notnull().sum()
@@ -490,24 +483,32 @@ class collembola_ai:
         # SAHI : Adapt with SAHI script for prediction on new images.
         ####
         # TO-DO WRITE A JSON FILE WITH LABELS WHEN TRAINING
-        labels = {
-            "0": "Sminthurides_aquaticus__281415",
-            "1": "Folsomia_candida__158441",
-            "2": "Lepidocyrtus_lignorum__707889",
-            "3": "Xenylla_boerneri__1725404",
-            "4": "Sphaeridia_pumilis__212016",
-            "5": "Megalothorax_minimus__438500",
-            "6": "Ceratophysella_gibbosa__187618",
-            "7": "Hypochtonius_rufulus__66580",
-            "8": "Malaconothrus_monodactylus__229876",
-            "9": "Sinella_curviseta__187695",
-            "10": "Deuterosminthurus_bicinctus__2041938",
-            "11": "Desoria_tigrina__370036",
-        }
-        # write a coco-style json file, to enable export of labels
-        create_coco_json_for_inference(inference_source_directory, labels)
-
-        # do batch inference on test set
+        if os.path.isfile(os.path.join(self.model_directory, "classes.json")):
+            with open(
+                os.path.join(self.model_directory, "classes.json"), "r"
+            ) as classes:
+                labels = json.load(classes)
+        else:
+            if os.path.isfile(os.path.join(self.train_directory, "train.json")):
+                extract_classes_from_coco_json(
+                    os.path.join(self.train_directory, "train.json"),
+                    os.path.join(self.model_directory, "classes.json"),
+                )
+            elif os.path.isfile(os.path.join(self.train_directory, "train.json")):
+                extract_classes_from_coco_json(
+                    os.path.join(self.test_directory, "test.json"),
+                    os.path.join(self.model_directory, "classes.json"),
+                )
+            else:
+                print(
+                    f"Did not find a classes.json file to map output to class labels in model directory {self.model_directory}."
+                )
+                print(
+                    f"Tried to generate a classes.json file but did not find train.json in training folder: {self.train_directory} or test.json in test folder: {self.test_directory}"
+                )
+                print("Continue with inference and use numbers instead of class names.")
+                labels = None
+        # do batch inference
         # returns relative path to resulting JSON
         export_dir = predict(
             model_type="detectron2",

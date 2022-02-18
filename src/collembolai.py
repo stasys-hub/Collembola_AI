@@ -73,7 +73,7 @@ def main():
         else:
             output_dir = args.output_dir
         # Run inference with your trained model on unlabeled data
-        My_Model.perform_inference_on_folder(output_dir, input_dir)
+        My_Model.perform_inference_on_folder(input_dir,output_dir)
     else:
         print("-a not set -> skipping annotation")
 
