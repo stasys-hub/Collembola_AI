@@ -10,15 +10,10 @@ Last Update:         31.01.2021
 Licence:             
 """
 
-from multiprocessing.sharedctypes import Value
 import os
 import json
 import configparser
 import shutil
-import pandas as pd
-import cv2
-import warnings
-import ntpath
 
 #import postprocess.duster as duster
 
@@ -26,14 +21,13 @@ import ntpath
 from utils.cocoutils import (
     testresults2coco,
     coco2df,
-    draw_coco_bbox,
     non_max_supression,
     match_true_n_pred_box,
-    d2_instance2dict,
-    df2coco,
     create_coco_json_for_inference,
     sahi_result_to_coco
 )
+
+from utils.output_inference_images import draw_coco_bbox
 
 from PIL import Image
 import numpy as np
@@ -42,9 +36,7 @@ from sklearn.metrics import confusion_matrix
 from utils.third_party_utils import plot_confusion_matrix
 
 from detectron2 import model_zoo
-from detectron2.data import DatasetCatalog, MetadataCatalog
-from detectron2.utils.visualizer import Visualizer
-from detectron2.engine import DefaultTrainer, DefaultPredictor
+from detectron2.engine import DefaultTrainer
 from detectron2.config import get_cfg
 from detectron2.data.datasets import register_coco_instances
 from sahi.predict import predict
@@ -206,6 +198,14 @@ class collembola_ai:
         cfg.MODEL.DEVICE = self.gpu_num
         # This will start the Trainer -> Runtime depends on hardware and parameters
         os.makedirs(self.model_directory, exist_ok=True)
+        with open(os.path.join(self.model_directory,"model_parameters.yaml"),"w") as outfile:
+            configuration = cfg.dump().split("\n")
+            # remove unneeded configurations that are not needed for SAHI (and lead to errors)
+            for idx,parameter in enumerate(configuration):
+                if "DEVICE" in parameter or "nms" in parameter:
+                    configuration.pop(idx)
+            configuration = "\n".join(configuration)
+            outfile.write(configuration)
         trainer = DefaultTrainer(cfg)
         trainer.resume_or_load(resume=False)
         cfg.DATALOADER.FILTER_EMPTY_ANNOTATIONS = False
@@ -232,8 +232,8 @@ class collembola_ai:
         "10":"Deuterosminthurus_bicinctus__2041938","11":"Desoria_tigrina__370036"}
         # do batch inference on test set
         # returns relative path to resulting JSON
-        
-        export_dir = predict(model_type="detectron2", 
+        export_dir = "runs/predict/exp5"
+        """export_dir = predict(model_type="detectron2", 
                             slice_width=self.slice_width, 
                             slice_height=self.slice_height, 
                             overlap_height_ratio=self.overlap_height_ratio, 
@@ -248,7 +248,7 @@ class collembola_ai:
                             model_confidence_threshold=self.threshold,
                             dataset_json_path=os.path.join(self.test_directory, "test.json"),
                             model_device="cuda"
-        )["export_dir"]
+        )["export_dir"]"""
 
         # RUNNING EVALUATION
         # ================================================================================================

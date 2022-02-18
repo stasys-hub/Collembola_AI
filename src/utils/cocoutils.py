@@ -10,21 +10,17 @@ Purpose:             a set of inhouse utilitary functions, related to operations
 Dependencies:        See ReadMe
 Last Update:         11.01.2021
 """
-import argparse
-import configparser
+
 from itertools import combinations, product
 import json
 import numpy as np
 import ntpath
-import shutil
-from pathlib import Path
 import os
 import pandas as pd
-from PIL import Image, ImageFont, ImageDraw, ImageEnhance
+from PIL import Image, ImageFont, ImageDraw
 from shapely.geometry import box
 import random
-import rglob
-import sys
+
 
 def testresults2coco(test_dir, inference_dir, write=False):
     '''
@@ -57,16 +53,17 @@ def testresults2coco(test_dir, inference_dir, write=False):
     
     return tinference
 
-def getbox(x):  
-    '''convert COCO bbox coordinates style to shapely box coordinates style
-    x: COCO bbox coordinates (list of 4 elements)'''
-    return box(x[0],x[1],x[0]+x[2],x[1]+x[3])
+
 
 def coco2df(coco):
     '''
     Fit a coco instance into a flat pandas DataFrame. Likely overkill to bring in pandas for this,
     but considerably simply operations from my own perspective =).
     '''
+    def getbox(x):  
+        '''convert COCO bbox coordinates style to shapely box coordinates style
+        x: COCO bbox coordinates (list of 4 elements)'''
+        return box(x[0],x[1],x[0]+x[2],x[1]+x[3])
     classes_df = pd.DataFrame(coco['categories'])
     classes_df.name = classes_df.name.str.strip()
     classes_df = classes_df.rename(columns={"id": "category_id"})
@@ -122,6 +119,7 @@ def draw_coco_bbox(coco, out_dir, coco_dir, eval_mode = False, prefix='annotated
               'salmon', 'sandybrown', 'seagreen', 'seashell', 'sienna', 'silver', 'skyblue', 'slateblue', 'slategray', 'slategrey', 
               'snow', 'springgreen', 'steelblue', 'tan', 'teal', 'thistle', 'tomato', 'turquoise', 'violet', 'wheat', 'white', 
               'whitesmoke', 'yellow', 'yellowgreen']
+    Image.MAX_IMAGE_PIXELS = None
     fnt = ImageFont.truetype(os.path.join(os.path.dirname(os.path.realpath(__file__)), "FreeMono.ttf"), fontsize)
     # convert result dataframe to coco
     try:
@@ -189,21 +187,19 @@ def match_true_n_pred_box(df_ttruth, df_pred, IoU_threshold=0.4):
     df_ttruth['true_box'] = df_ttruth['box']
     df_ttruth['true_area'] = df_ttruth['area']
     
-    
-    for image_id in df_pred.image_id.unique():
+    for image_id in df_pred.image_id.unique():        
         sdf_pred = df_pred[df_pred['image_id'] == image_id]
         sdf_ttruth = df_ttruth[df_ttruth['image_id'] == image_id]
         sdf_ttruth = df_ttruth[df_ttruth['image_id'] == image_id]
-
         df = pd.DataFrame(product(sdf_ttruth['id'], sdf_pred['id']), columns=['id_true', 'id_pred'])
         df = df.merge(sdf_ttruth[['id_true', 'true_box', 'true_area']], how='left', on='id_true')\
             .merge(sdf_pred[['id_pred', 'pred_box', 'score']], how='left', on='id_pred')
-
         df['intersection'] = df[['true_box', 'pred_box']].apply(lambda x: x[0].intersection(x[1]).area, axis=1)
         df['union'] = df[['true_box', 'pred_box']].apply(lambda x: x[0].union(x[1]).area, axis=1)
+    
         df['IoU'] = df['intersection'] / df['union']
         matched = pd.concat([matched, df], axis=0)
-        
+
     df2 = matched[matched['IoU'] > IoU_threshold].sort_values(by='score', ascending = False)
     df2 = df2.drop_duplicates(subset=['id_pred'], keep='first')
     df2 = df2.drop_duplicates(subset=['id_true'], keep='first')
@@ -218,8 +214,9 @@ def match_true_n_pred_box(df_ttruth, df_pred, IoU_threshold=0.4):
 
     pairs['is_correct'] = (pairs['name_true'] == pairs['name_pred'])
     pairs['is_correct_class'] = (pairs['name_true'] == pairs['name_pred']).where(pairs.id_pred.notnull(), np.nan)
-        
-    return pairs
+
+    return pairs 
+
 
 def numerize_img_id(coco):
     '''

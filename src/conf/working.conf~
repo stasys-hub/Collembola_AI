@@ -1,5 +1,5 @@
 [DEFAULT]
-project_directory = /home/stephan/Desktop/collembola_revision/stephan/second_phase/train_1500_full_plus_6bg_testing
+project_directory = /home/stephan/Desktop/collembola_revision/stephan/second_phase/train_1500_full_plus_6bg_testing/test_slicing
 model_name = faster_rcnn_X_101_FPN
 slice_height = 1500
 slice_width = 1500
