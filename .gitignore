@@ -4,3 +4,4 @@ Training_C_AI_DATA/
 __pycache__/
 .vscode/
 .ipynb_checkpoints/
+src/test.py

@@ -21,13 +21,13 @@ import shutil
 from utils.cocoutils import (
     testresults2coco,
     coco2df,
-    match_true_n_pred_box,
     create_coco_json_for_inference,
     sahi_result_to_coco
 )
 
 from utils.output_inference_images import draw_coco_bbox
 from utils.nms import non_max_supression
+from evaluate.match_groundtruth import match_true_n_pred_box
 
 from PIL import Image
 import numpy as np
