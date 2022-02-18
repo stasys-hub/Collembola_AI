@@ -232,8 +232,7 @@ class collembola_ai:
         "10":"Deuterosminthurus_bicinctus__2041938","11":"Desoria_tigrina__370036"}
         # do batch inference on test set
         # returns relative path to resulting JSON
-        export_dir = "runs/predict/exp5"
-        """export_dir = predict(model_type="detectron2", 
+        export_dir = predict(model_type="detectron2", 
                             slice_width=self.slice_width, 
                             slice_height=self.slice_height, 
                             overlap_height_ratio=self.overlap_height_ratio, 
@@ -248,7 +247,7 @@ class collembola_ai:
                             model_confidence_threshold=self.threshold,
                             dataset_json_path=os.path.join(self.test_directory, "test.json"),
                             model_device="cuda"
-        )["export_dir"]"""
+        )["export_dir"]
 
         # RUNNING EVALUATION
         # ================================================================================================
