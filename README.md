@@ -9,6 +9,7 @@
   - [Dependencies](#dependencies)
   - [Install in conda enviorment](#install-in-conda-enviorment)
   - [Install in venv](#install-in-venv)
+  - [Download pretrained model](#download-pretrained-model)
 
 - [Usage](#usage)
   
@@ -22,7 +23,7 @@
   
   - [Acquire pictures](#acquite-pictures)
   
-  - [Annotate pictures](#anotate-pictures.)
+  - [Annotate pictures](#anotate-pictures)
 
 ## Introduction
 
@@ -57,20 +58,7 @@ We wrote the code on a machine running Ubuntu 20.04 LTS/Arch, but any Linux envi
 
 3. CUDA enabled Nvidia GPU -> checkout the [compatibility list ](https://detectron2.readthedocs.io/en/latest/tutorials/install.html#install-pre-built-detectron2-linux-only) of detectron and CUDA (We ran it on a RTX 2060 Super, Nvidia Titan X and V100)
 
-4. OPTIONAL: If you want to use our pretrained X101 model, you will need [https://git-lfs.github.com/](git-lfs) to download it.
-   
-   ```bash
-   # OPTIONAL
-   # for unix: download
-   wget https://github.com/git-lfs/git-lfs/releases/download/v3.1.2/git-lfs-linux-amd64-v3.1.2.tar.gz
-   # unpack
-   tar –xvzf git-lfs-linux-amd64-v3.1.2.tar.gz
-   cd git-lfs-linux-amd64-v3.1.2
-   # install
-   sudo bash install.sh
-   # set up git-lfs for your git account
-   git lfs install
-   ```
+
 
 ### Install in conda enviorment
 
@@ -117,6 +105,44 @@ pip3 install -r requirements.txt
 *for CUDA installation support please refer to the [nvidia docs](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html)
 
 To use CollembolAI just clone the git Directory into a place of your choice and follow the [installation](#installation) if not already happened.
+
+### Download pretrained model
+
+The pretrained X101 model is stored with [git lfs](https://git-lfs.github.com/). Git lfs is an extension to github and needs to be installed.
+
+**Mac**
+
+```bash
+# UNIX
+# OPTIONAL
+# download
+wget https://github.com/git-lfs/git-lfs/releases/download/v3.1.2/git-lfs-linux-amd64-v3.1.2.tar.gz
+# unpack
+tar –xvzf git-lfs-linux-amd64-v3.1.2.tar.gz
+cd git-lfs-linux-amd64-v3.1.2
+# install
+sudo bash install.sh
+# set up git-lfs for your git account
+git lfs install
+# browse to CollembolAI folder
+cd path/to/CollembolAI
+# in the CollembolAI folder
+git lfs pull
+```
+
+**Mac**
+
+```bash
+# MAC
+# OPTIONAL
+brew install git-lfs
+# set up git-lfs for your git account
+git lfs install
+# browse to CollembolAI folder
+cd path/to/CollembolAI
+# in the CollembolAI folder
+git lfs pull
+```
 
 ## Usage
 
@@ -263,9 +289,9 @@ non_maximum_supression_iou_threshold = 0.15
 
 You reproduced our macrophography system ? Great, you can find some arduino scripts in the "hovermacro_control" folder of the repo. canon_apsc.ino was suitable for using with a Canon EOS 7D DSLR. pentax_ff.ino is our running version using a Pentax k1 II DSLR. The program has to be adapted if using a new brand or a different sensor size / resolution. Get in touch if you need help. Note that you can adjust the surface to cover to your needs and produce images of various size.
 
-### Building a dataset
+## Building a dataset
 
-#### Acquire pictures
+### Acquire pictures
 
 CollembolAI is designed to be applied on large to very large pictures including a large number of small objects. While our object of study is soil fauna, the pipeline would apply to any comparable problem. To follow our steps, first is to acquire the collection of pictures. If you are using HoverMacroCam, make sure that your background is visible and showing a random pattern to guide the stitching. In our case, the paintbrush strokes did the job. Note: we are now working on an approach that do not rely on image stitching anymore and will simplify the image acquition. You are welcome to get in touch with us.
 
@@ -303,7 +329,7 @@ For detail run:
 stitch_macro.py -h
 ```
 
-#### Annotate pictures.
+### Annotate pictures
 
 Our pipeline support annotations using [labelImg](https://github.com/tzutalin/labelImg) using XML PascalVOC labels format that will be converted to JSON COCO format.
 Of course, you can choose the software of your liking. In the end, <strong>you need to produce annotation in the JSON COCO format.</strong>
