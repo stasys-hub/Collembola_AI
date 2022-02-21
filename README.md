@@ -110,7 +110,7 @@ To use CollembolAI just clone the git Directory into a place of your choice and 
 
 The pretrained X101 model is stored with [git lfs](https://git-lfs.github.com/). Git lfs is an extension to github and needs to be installed.
 
-**Mac**
+**UNIX**
 
 ```bash
 # UNIX
