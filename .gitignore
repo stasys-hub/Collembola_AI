@@ -7,3 +7,4 @@ __pycache__/
 src/test.py
 src/conf/working.conf
 *~
+.vscode
