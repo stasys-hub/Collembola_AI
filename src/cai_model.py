@@ -499,7 +499,7 @@ class collembola_ai:
         create_coco_json_for_inference(inference_source_directory,labels)
         # do batch inference
         # returns relative path to resulting JSON
-        """export_dir = predict(
+        export_dir = predict(
             model_type="detectron2",
             slice_width=self.slice_width,
             slice_height=self.slice_height,
@@ -519,8 +519,7 @@ class collembola_ai:
                 inference_source_directory, "inference.json"
             ),
             model_device="cuda",
-        )["export_dir"]"""
-        export_dir = 'runs/predict/exp4'
+        )["export_dir"]
         if not os.path.isdir(inference_result_directory):
             os.mkdir(inference_result_directory)
         # Loading the predictions in a DataFrame, deduplicating overlaping predictions

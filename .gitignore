@@ -8,3 +8,4 @@ src/test.py
 src/conf/working.conf
 *~
 .vscode
+working.conf
