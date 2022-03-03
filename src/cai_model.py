@@ -110,7 +110,6 @@ class collembola_ai:
         print(f"Batch Size:         \t{self.batch_size}")
         print(f"Learning Rate:      \t{self.learning_rate}")
         print(f"Number of classes:  \t{self.num_classes}")
-        print(f"GPU device number:  \t{self.gpu_num}")
         print(f"Treshhold:          \t{self.threshold}")
         print("\n# ----------------------------------------------------------------- #")
 
@@ -497,9 +496,10 @@ class collembola_ai:
                 )
                 print("Continue with inference and use numbers instead of class names.")
                 labels = None
+        create_coco_json_for_inference(inference_source_directory,labels)
         # do batch inference
         # returns relative path to resulting JSON
-        export_dir = predict(
+        """export_dir = predict(
             model_type="detectron2",
             slice_width=self.slice_width,
             slice_height=self.slice_height,
@@ -519,30 +519,31 @@ class collembola_ai:
                 inference_source_directory, "inference.json"
             ),
             model_device="cuda",
-        )["export_dir"]
-
+        )["export_dir"]"""
+        export_dir = 'runs/predict/exp4'
         if not os.path.isdir(inference_result_directory):
             os.mkdir(inference_result_directory)
         # Loading the predictions in a DataFrame, deduplicating overlaping predictions
         sahi_result_to_coco(
             os.path.join(
-                self.project_directory, os.path.join(export_dir, "result.json")
+                inference_source_directory, os.path.join(export_dir, "result.json")
             ),
             os.path.join(inference_source_directory, "inference.json"),
             os.path.join(
-                self.project_directory, os.path.join(export_dir, "result_coco.json")
+                inference_source_directory, os.path.join(export_dir, "result_coco.json")
             ),
         )
         with open(
             os.path.join(
-                self.project_directory, os.path.join(export_dir, "result_coco.json")
+                inference_source_directory, os.path.join(export_dir, "result_coco.json")
             ),
             "r",
         ) as j:
             tpred = json.load(j)
         # apply non maximum supression
+        tpred_df = coco2df(tpred)
         df_pred = non_max_supression(
-            coco2df(tpred), self.nms_iou_threshold, self.class_agnostic
+            tpred_df, self.nms_iou_threshold, self.class_agnostic
         )
         # output annotated images
         draw_coco_bbox(

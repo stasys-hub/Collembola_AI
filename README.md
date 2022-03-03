@@ -13,7 +13,7 @@
 
 - [Usage](#usage)
   
-  - [Example of configuration file](#example-of-configuartion-file)
+  - [Example of configuration file](#Example-of-configuartion-file)
   
   - [Running the pipeline](#running-the-pipeline)
 
@@ -57,8 +57,6 @@ We wrote the code on a machine running Ubuntu 20.04 LTS/Arch, but any Linux envi
 2. Detectron 2 - since we use the Detectron2 API we have the same Dependecies. Please refer to their [Documentation](https://detectron2.readthedocs.io/tutorials/install.html#requirements).
 
 3. CUDA enabled Nvidia GPU -> checkout the [compatibility list ](https://detectron2.readthedocs.io/en/latest/tutorials/install.html#install-pre-built-detectron2-linux-only) of detectron and CUDA (We ran it on a RTX 2060 Super, Nvidia Titan X and V100)
-
-
 
 ### Install in conda enviorment
 
@@ -241,7 +239,7 @@ non_maximum_supression_iou_threshold = 0.15
 4. Annotate all pictures in an specified folder (`-o` is optional).
    
    ```bash
-   python3 /path/to/CollembolAI/src/collembolAI.py /path/to/CollembolAI/src/conf/{YOUR_CONFIG_FILE}.conf -i /path/to/input -o /path/to/output
+   python3 /path/to/CollembolAI/src/collembolAI.py /path/to/CollembolAI/src/conf/{YOUR_CONFIG_FILE}.conf -a -i /path/to/input -o /path/to/output
    ```
 
 5. Running the whole pipeline: training, testing, annotating in one go.
