@@ -60,9 +60,10 @@ def match_true_n_pred_box(df_ttruth, df_pred, IoU_threshold=0.4):
         .merge(df2[["id_pred", "score"]], how="outer", on="id_pred")
         .rename(columns={"name": "name_true"})
     )
-    pairs = pairs.merge(df_pred[["id_pred", "name"]], how="outer", on="id_pred").rename(
+    pairs = pairs.merge(df_pred[["id_pred", "name", "score"]], how="outer", on="id_pred").rename(
         columns={"name": "name_pred"}
     )
+    pairs['score'] = pairs['score_x'].where(pairs['score_x'].notnull(), pairs['score_y'])
     pairs["is_correct"] = pairs["name_true"] == pairs["name_pred"]
     pairs["is_correct_class"] = (pairs["name_true"] == pairs["name_pred"]).where(
         pairs.id_pred.notnull(), np.nan
