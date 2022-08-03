@@ -25,5 +25,6 @@ dependencies:
     - scikit_learn==1.0.2
     - opencv_python==4.5.1.48
     - rglob==1.7
+    - Shapely
 
 
