@@ -15,10 +15,9 @@ import pandas as pd
 from itertools import combinations
 
 
-def non_max_supression(df_pred, IoU_threshold=0.7, class_agnostic=False, area=1000000):
+def non_max_supression(df_pred, IoU_threshold=0.7, area=1000000):
     """Identify overlapping annotations boxes in a dataframe created from  a coco instance, identify and remove duplicates based
     on IoU threshold. If class agnostic is true, only overlapping boxes from the same label will be removed."""
-    print(df_pred)
     nms_df = pd.DataFrame()
     for image_id in df_pred.image_id.unique():
         # get a dataframe with predictions of certain image
@@ -38,27 +37,20 @@ def non_max_supression(df_pred, IoU_threshold=0.7, class_agnostic=False, area=10
             left_on="id_y",
             right_on="id_temp",
         )
+        if df.shape[0] == 0:
+            continue
         # compute intersection, union and IoU between predicted bounding boxes
-        if df.shape[0] > 0:
-            df["intersection"] = df[["box_x", "box_y"]].apply(
-                lambda x: x[0].intersection(x[1]).area, axis=1
-            )
-            df["union"] = df[["box_x", "box_y"]].apply(
-                lambda x: x[0].union(x[1]).area, axis=1
-            )
-            df["IoU"] = df["intersection"] / df["union"]
-            df = df[df["IoU"] > IoU_threshold]
-            drop = []
-            if class_agnostic:
-                for _, row in df.iterrows():
-                    if row["score_x"] >= row["score_y"] and row["name_x"] == row["name_y"]:
-                        drop.append(row["id_x"])
-            else:
-                for _, row in df.iterrows():
-                    if row["score_x"] >= row["score_y"]:
-                        drop.append(row["id_x"])
-            sdf_pred = sdf_pred[~(sdf_pred["id"].isin(drop))]
-            sdf_pred.drop(labels=["id_temp"], axis=1, inplace=True)
-            nms_df = pd.concat([nms_df, sdf_pred], axis=0)
+        df["intersection"] = df[["box_x", "box_y"]].apply(
+            lambda x: x[0].intersection(x[1]).area, axis=1
+        )
+        df["union"] = df[["box_x", "box_y"]].apply(
+            lambda x: x[0].union(x[1]).area, axis=1
+        )
+        df["IoU"] = df["intersection"] / df["union"]
+        df = df[df["IoU"] > IoU_threshold]
+        df['drop'] = df['id_y'].where(df['score_x'] > df['score_y'], df['id_x'])
+        sdf_pred = sdf_pred[~(sdf_pred['id'].isin(df['drop']))] 
+        sdf_pred.drop(labels=['id_temp'], axis=1, inplace=True)
+        nms_df = pd.concat([nms_df, sdf_pred], axis=0)
     nms_df = nms_df[nms_df["area"] < area]
     return nms_df

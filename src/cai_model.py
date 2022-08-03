@@ -76,7 +76,6 @@ class collembola_ai:
         self.slice_width = int(config["DEFAULT"]["slice_width"])
         self.overlap_height_ratio = float(config["DEFAULT"]["overlap_height_ratio"])
         self.overlap_width_ratio = float(config["DEFAULT"]["overlap_width_ratio"])
-        self.class_agnostic = config.getboolean("DEFAULT", "class_agnostic")
         with open(os.path.join(self.train_directory, "train.json"), "r") as js:
             self.num_classes = len(json.load(js)["categories"])
             print(f"Found {self.num_classes} classes in the training annotation file")
@@ -231,6 +230,12 @@ class collembola_ai:
 
         # RUNNING INFERENCE
         # ================================================================================================
+        # stop excecution if model is not found
+        if not os.path.isdir(self.model_directory):
+            class ModelNotFoundError(Exception): print(f'\n\n****MODEL NOT FOUND****\nCould not find the model directory "{self.model_directory}" in the project folder.',
+                    'Make sure to use the correct folder structure:\n', '|--projectfolder\n', ' |-train\n', ' |-test\n', f' |-{os.path.basename(self.model_directory)}\n')
+            raise ModelNotFoundError()
+        # search for test.json for evaluation
         if not os.path.isfile(os.path.join(self.test_directory, "test.json")):
             raise FileNotFoundError(
                 f"Did not find the test.json path in test diretory: {self.test_directory}."
@@ -278,8 +283,7 @@ class collembola_ai:
             write=True,
         )
         df_pred = non_max_supression(
-            coco2df(tpred), nms_iou_threshold, self.class_agnostic
-        )
+            coco2df(tpred), nms_iou_threshold)
 
         # Loading train set and test set in DataFrame
         with open(os.path.join(self.test_directory, "test.json"), "r") as j:
@@ -528,10 +532,7 @@ class collembola_ai:
         if not os.path.isdir(inference_result_directory):
             os.mkdir(inference_result_directory)
         # Loading the predictions in a DataFrame, deduplicating overlaping predictions
-        sahi_result_to_coco(
-            os.path.join(
-                inference_source_directory, os.path.join(export_dir, "result.json")
-            ),
+        sahi_result_to_coco(os.path.join(export_dir, "result.json"),
             os.path.join(inference_source_directory, "inference.json"),
             os.path.join(
                 inference_source_directory, os.path.join(export_dir, "result_coco.json")
@@ -547,8 +548,7 @@ class collembola_ai:
         # apply non maximum supression
         tpred_df = coco2df(tpred)
         df_pred = non_max_supression(
-            tpred_df, self.nms_iou_threshold, self.class_agnostic
-        )
+            tpred_df, self.nms_iou_threshold)
         # output annotated images
         draw_coco_bbox(
             df_pred, inference_result_directory, inference_source_directory, False
