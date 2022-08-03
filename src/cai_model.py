@@ -511,7 +511,7 @@ class collembola_ai:
                 self.model_directory, "model_parameters.yaml"
             ),
             no_standard_prediction=True,
-            export_visual=False,
+            novisual=True,
             return_dict=True,
             model_category_mapping=labels,
             model_confidence_threshold=self.threshold,
