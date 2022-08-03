@@ -471,6 +471,11 @@ class collembola_ai:
         ####
         # SAHI : Adapt with SAHI script for prediction on new images.
         ####
+        if not os.path.isdir(self.model_directory):
+            class ModelNotFoundError(Exception): print(f'\n\n****MODEL NOT FOUND****\nCould not find the model directory "{self.model_directory}" in the project folder.',
+                    'Make sure to use the correct folder structure:\n', '|--projectfolder\n', ' |-train\n', ' |-test\n', f' |-{os.path.basename(self.model_directory)}\n')
+            raise ModelNotFoundError()
+
         if os.path.isfile(os.path.join(self.model_directory, "classes.json")):
             with open(
                 os.path.join(self.model_directory, "classes.json"), "r"
