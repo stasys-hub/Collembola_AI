@@ -68,8 +68,11 @@ def plot_confusion_matrix(
     # change x & y tick labels
     if target_names is not None:
         tick_marks = np.arange(len(target_names))
-        axes.set_xticks(tick_marks, target_names, rotation=90)
+        axes.set_xticks(tick_marks, target_names)
         axes.set_yticks(tick_marks, target_names)
+        plt.setp(axes.get_xticklabels(), rotation=90)
+
+
     # apply colormap & text labels
     thresh = cm.max() / 2
     for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):

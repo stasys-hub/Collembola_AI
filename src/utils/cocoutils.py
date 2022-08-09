@@ -49,16 +49,16 @@ def testresults2coco(test_dir, inference_dir, write=False):
     
     return tinference
 
+def COCObox_2_shapely(x):  
+    '''convert COCO bbox coordinates style to shapely box coordinates style
+    x: COCO bbox coordinates (list of 4 elements)'''
+    return box(x[0],x[1],x[0]+x[2],x[1]+x[3])
 
 def coco2df(coco):
     '''
     Fit a coco instance into a flat pandas DataFrame. Likely overkill to bring in pandas for this,
     but considerably simply operations from my own perspective =).
     '''
-    def getbox(x):  
-        '''convert COCO bbox coordinates style to shapely box coordinates style
-        x: COCO bbox coordinates (list of 4 elements)'''
-        return box(x[0],x[1],x[0]+x[2],x[1]+x[3])
     classes_df = pd.DataFrame(coco['categories'])
     classes_df.name = classes_df.name.str.strip()
     classes_df = classes_df.rename(columns={"id": "category_id"})
@@ -69,7 +69,7 @@ def coco2df(coco):
                     .merge(classes_df, on="category_id", how='left')\
                     .merge(images_df, on="image_id", how='left')
     
-    coco_df['box'] = coco_df['bbox'].apply(getbox)
+    coco_df['box'] = coco_df['bbox'].apply(COCObox_2_shapely)
     coco_df['area'] = coco_df['box'].apply(lambda x: x.area)
 
     return coco_df

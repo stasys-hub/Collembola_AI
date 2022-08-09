@@ -1,7 +1,7 @@
 import os
 import json
 import pandas as pd
-from utils.cocoutils import coco2df
+from cocoutils import coco2df
 
 
 def describe_train_test(

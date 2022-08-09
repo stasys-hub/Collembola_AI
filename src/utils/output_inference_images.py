@@ -13,7 +13,7 @@ Last Update:         18.02.2022
 
 from PIL import Image, ImageFont, ImageDraw
 import os
-from utils.cocoutils import coco2df
+from cocoutils import coco2df
 
 
 def draw_coco_bbox(
@@ -33,6 +33,7 @@ def draw_coco_bbox(
     To adjust display, simply change line_width (= box line), font_size (= label font). Labels text can be shifted vertically
     with fontYshift.
     """
+
     # define some colors for bounding boxes
     with open(
         os.path.join(os.path.dirname(os.path.realpath(__file__)), "colors.txt"), "r"

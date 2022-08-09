@@ -28,13 +28,11 @@ from utils.cocoutils import (
 
 from utils.output_inference_images import draw_coco_bbox
 from postprocess.nms import non_max_supression
-from evaluate.match_groundtruth import match_true_n_pred_box
+from evaluation_functions import process_results, get_average_precision_recall_from_cls_vc, get_mAP_from_TruthPred_df
 
 from PIL import Image
 import numpy as np
 
-from sklearn.metrics import confusion_matrix
-from utils.third_party_utils import plot_confusion_matrix
 
 from detectron2 import model_zoo
 from detectron2.engine import DefaultTrainer
@@ -82,6 +80,7 @@ class collembola_ai:
             print(f"Found {self.num_classes} classes in the training annotation file")
         self.nms_iou_threshold = float(
             config["OPTIONAL"]["non_maximum_supression_iou_threshold"]
+        self.match_iou_thresh = float(onfig["OPTIONAL"]["true_pred_matching_iou_threshold"]
         )
 
     def print_model_values(self):
@@ -223,7 +222,7 @@ class collembola_ai:
         trainer.train()
         print("\n---------------Finished Training---------------")
 
-    def start_evaluation_on_test(self, nms_iou_threshold=0.15, verbose=True):
+    def start_evaluation_on_test(self, verbose=True):
         """This function will run the trained model on the test dataset (test/test.json)"""
 
         ##
@@ -269,195 +268,24 @@ class collembola_ai:
         # RUNNING EVALUATION
         # ================================================================================================
         print("Reporting and evaluating the inference on test set", end="\n\n\n")
-        print('Loading predicted labels from "result.json"')
-        if not os.path.isdir(os.path.join(self.project_directory, "test_results")):
-            os.mkdir(os.path.join(self.project_directory, "test_results"))
-        # Loading the predictions in a DataFrame, deduplicating overlaping predictions
-        tpred = testresults2coco(
-            self.test_directory,
-            os.path.join(self.project_directory, export_dir),
-            write=True,
-        )
-        df_pred = non_max_supression(
-            coco2df(tpred), nms_iou_threshold, self.class_agnostic
-        )
+        output_directory = os.path.join(
+                        self.project_directory, "test_results")
+        pairs, cls_value_counts, df_ttruth, df_pred = process_results(self.test_directory, 
+                                            output_directory, self.train_directory, nms_IoU=self.nms_iou_threshold,
+                                            match_thresh=self.match_iou_thresh, score_thresh=self.threshold,
+                                            verbose = True, draw_n_plot = True)
 
-        # Loading train set and test set in DataFrame
-        with open(os.path.join(self.test_directory, "test.json"), "r") as j:
-            ttruth = json.load(j)
-            df_ttruth = coco2df(ttruth)
-            df_ttruth["id_true"] = df_ttruth["id"]
-
-        with open(os.path.join(self.train_directory, "train.json"), "r") as j:
-            train = json.load(j)
-            df_train = coco2df(train)
-            df_train["id_train"] = df_train["id"]
-
-        # Computing representation (abundance and area) of each classes in the train and test dataset
-        # ------------------------------------------------------------------------------------------------
-        tt_abundances = (
-            df_train.name.value_counts()
-            .to_frame()
-            .join(df_ttruth.name.value_counts(), lsuffix="_train", rsuffix="_test")
-        )
-        tt_abundances.columns = ["Train", "Test"]
-        tt_abundances = (
-            tt_abundances.join(df_pred.name.value_counts())
-            .join(df_ttruth.groupby("name").sum()["area"])
-            .join(df_pred.groupby("name").sum()["area"], rsuffix="pred")
-        )
-        tt_abundances.columns = [
-            "Train",
-            "Test True",
-            "Test Pred",
-            "Test True Area",
-            "Test Pred Area",
-        ]
-        tt_abundances["Perc Pred True"] = (
-            tt_abundances["Test Pred Area"] / tt_abundances["Test True Area"] * 100
-        )
-        tt_abundances["Test True Contribution To Total Area"] = (
-            tt_abundances["Test True Area"]
-            / tt_abundances["Test True Area"].sum()
-            * 100
-        )
-        tt_abundances["Test Pred Contribution To Total Area"] = (
-            tt_abundances["Test Pred Area"]
-            / tt_abundances["Test Pred Area"].sum()
-            * 100
-        )
-        tt_abundances.to_csv(
-            os.path.join(
-                self.project_directory,
-                os.path.join("test_results", "species_abundance_n_area.tsv"),
-            ),
-            sep="\t",
-        )
-        # ------------------------------------------------------------------------------------------------
-
-        # Matching the predicted annotations with the true annotations
-        pairs = match_true_n_pred_box(df_ttruth, df_pred, IoU_threshold=0.4)
-        # Computing detection rate, classification accuracy, false positive rate
-        # ------------------------------------------------------------------------------------------------
-        total_true_labels = pairs.id_true.notnull().sum()
-        true_labels_without_matching_preds = pairs.id_pred.isnull().sum()
-        perc_detected_animals = 100 - (
-            true_labels_without_matching_preds / total_true_labels * 100
-        )
-        perc_correct_class = (
-            pairs["is_correct_class"].sum() / pairs.dropna().shape[0] * 100
-        )
-
-        if verbose:
-            print(f"The test set represents a total of {total_true_labels} specimens.")
-            print(
-                f'The model produced {len(tpred["annotations"])} prediction, of which {df_pred.shape[0]} remains after deduplication'
-                + " and removal of oversized bounding boxes."
-            )
-            print(
-                f"{total_true_labels - true_labels_without_matching_preds} ({round(perc_detected_animals, 1)}% of the total) "
-                + "of the actual specimens were correcly detected."
-                + f' Of those detected specimens, {int(pairs["is_correct_class"].sum())} (= {round(perc_correct_class, 1)}%) where assigned to the correct species.'
-            )
-
-        # Tagging the false positives in df_pred
-        df_pred = df_pred.merge(pairs[["id_pred", "id_true"]], how="left", on="id_pred")
-        df_pred["is_false_positive"] = True
-        df_pred["is_false_positive"] = df_pred["is_false_positive"].where(
-            df_pred["id_true"].isnull(), False
-        )
-
-        # Adding inference outcomes on the true labels, df_ttruth
-        df_ttruth = df_ttruth.merge(
-            pairs[pairs["name_true"].notnull()][
-                ["id_true", "score", "name_pred", "is_correct_class"]
-            ],
-            on="id_true",
-        )
-        df_ttruth["is_detected"] = (
-            df_ttruth["is_correct_class"]
-            .where(df_ttruth["is_correct_class"].isnull(), 1)
-            .fillna(0)
-        )
-
-        if verbose:
-            print(
-                f'Of the predicted labels, {df_pred["is_false_positive"].sum()} '
-                + f'(={round(df_pred["is_false_positive"].sum() / df_pred.shape[0] * 100,1)}%) '
-                + "where false positive (background, not related to a real specimen)"
-            )
-        # ------------------------------------------------------------------------------------------------
-
-        # Drawing the predicted annotations on the pictures
-        # ------------------------------------------------------------------------------------------------
-        print(
-            "\n\nDrawing the predicted annotations of the test pictures to support visual verification"
-        )
-        print("Do not use for testing or for training ! =)")
-        draw_coco_bbox(
-            df_pred,
-            os.path.join(self.project_directory, "test_results"),
-            self.test_directory,
-            True,
-            prefix="predicted",
-            line_width=10,
-            fontsize=150,
-            fontYshift=-125,
-        )
-        # ------------------------------------------------------------------------------------------------
-
-        # Plotting the confusion matrices
-        # ------------------------------------------------------------------------------------------------
-        # 1. CM including only the detected true label
-        mcm = confusion_matrix(
-            pairs.dropna().name_true,
-            pairs.dropna().name_pred.fillna("NaN"),
-            labels=pairs.dropna().name_true.unique(),
-        )
-        plot_confusion_matrix(
-            mcm,
-            pairs.dropna().name_true.unique(),
-            write=os.path.join(
-                self.project_directory, "test_results/cm_onlydetected.png"
-            ),
-        )
-
-        # 2. CM including only the detected true label, normalized
-        # Note: the normalized matrix option is bugged in the plot_confusion_matrix function from sklearn
-        # Thus I normalize the matrix here before plotting and don't use the option
-        mcm = mcm.astype("float") / mcm.sum(axis=1)[:, np.newaxis] * 100
-        mcm = mcm.round(1)
-        plot_confusion_matrix(
-            mcm,
-            pairs.dropna().name_true.unique(),
-            write=os.path.join(
-                self.project_directory, "test_results/cm_norm_onlydetected.png"
-            ),
-        )
-
-        # 3. CM including only the undetected true label (Nan)
-        mcm = confusion_matrix(
-            pairs.name_true.fillna("NaN"),
-            pairs.name_pred.fillna("NaN"),
-            labels=pairs.fillna("NaN").name_true.unique(),
-        )
-        plot_confusion_matrix(
-            mcm,
-            np.append(pairs.name_true.unique(), "NaN"),
-            write=os.path.join(self.project_directory, "test_results/cm_inclNaN.png"),
-        )
-
-        # 4. CM including only the undetected true label (Nan), normalized
-
-        mcm = mcm.astype("float") / mcm.sum(axis=1)[:, np.newaxis] * 100
-        mcm = np.nan_to_num(mcm.round(1))
-        plot_confusion_matrix(
-            mcm,
-            np.append(pairs.name_true.unique(), "NaN"),
-            write=os.path.join(
-                self.project_directory, "test_results/cm_norm_inclNaN.png"
-            ),
-        )
+        metrics = [round(r, 3) for r in get_average_precision_recall_from_cls_vc(cls_value_counts)]
+        print(f'Micro averaged metrics - precision: {metrics[0]}, recall: {metrics[1]}')
+        print(f'Macro averaged metrics - precision: {metrics[2]}, recall: {metrics[3]}')
+        
+        print(f'Computing PASCAL VOC mAP@0.5')
+        pairs, cls_value_counts, df_ttruth, df_pred = process_results(self.test_directory,
+                                            output_directory, self.train_directory, nms_IoU=self.nms_iou_threshold,
+                                            match_thresh=0.5, score_thresh=0,
+                                            verbose = False, draw_n_plot = False, write_outputs=False)
+        print(f'PASCAL VOC mAP@0.5:', round(get_mAP_from_TruthPred_df(pairs), 3))
+     
         print("\n---------------Finished Evaluation---------------")
 
         # ================================================================================================
