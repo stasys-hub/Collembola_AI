@@ -164,3 +164,8 @@ def create_coco_json_for_inference(path_to_inference_folder: str, labels:dict) -
         json_file.write('    "licenses": "",\n')
         json_file.write('    "info": ""\n')
         json_file.write('}')
+
+def COCObox_2_shapely(x):  
+    '''convert COCO bbox coordinates style to shapely box coordinates style
+    x: COCO bbox coordinates (list of 4 elements)'''
+    return box(x[0],x[1],x[0]+x[2],x[1]+x[3])

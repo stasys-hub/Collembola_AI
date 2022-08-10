@@ -57,7 +57,7 @@ def main():
 
     # start evaluation on test set
     if args.evaluate:
-        My_Model.start_evaluation_on_test(nms_iou_threshold=My_Model.nms_iou_threshold)
+        My_Model.start_evaluation_on_test()
     else:
         print("-e not set -> skipping evaluation")
 
